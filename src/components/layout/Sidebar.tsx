@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
-  const [expanded, setExpanded] = useState(true);
+  const [open, setOpen] = useState(true);
   
   const navigationItems = [
     { title: "Dashboard", icon: Home, url: "/" },
@@ -45,13 +45,13 @@ export function AppSidebar() {
   ];
 
   return (
-    <Sidebar expanded={expanded} onExpandedChange={setExpanded} className="border-r border-dark-bg-light">
+    <Sidebar className="border-r border-dark-bg-light">
       <SidebarHeader className="py-4">
-        <div className={cn("flex items-center gap-2 px-4", !expanded && "justify-center")}>
+        <div className={cn("flex items-center gap-2 px-4", !open && "justify-center")}>
           <div className="h-8 w-8 rounded-md bg-gradient-dark-red flex items-center justify-center">
             <Server size={20} className="text-white" />
           </div>
-          {expanded && (
+          {open && (
             <span className="font-bold text-lg text-white">
               OracleOps<span className="text-dark-red-400">.</span>
             </span>
@@ -62,7 +62,7 @@ export function AppSidebar() {
       <SidebarContent className="red-scrollbar">
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider">
-            {expanded ? "Management" : ""}
+            {open ? "Management" : ""}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -74,7 +74,7 @@ export function AppSidebar() {
                       location.pathname === item.url && "bg-dark-red-900/50"
                     )}>
                       <item.icon size={20} className={cn("text-muted-foreground", location.pathname === item.url && "text-dark-red-400")} />
-                      {expanded && <span>{item.title}</span>}
+                      {open && <span>{item.title}</span>}
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -91,7 +91,7 @@ export function AppSidebar() {
               <SidebarMenuButton asChild className="hover:bg-dark-red-900/30">
                 <a href={item.url} className="flex items-center gap-3 rounded-md">
                   <item.icon size={20} className="text-muted-foreground" />
-                  {expanded && <span>{item.title}</span>}
+                  {open && <span>{item.title}</span>}
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
