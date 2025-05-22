@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,27 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+                // Custom colors for our dark red theme
+                "dark-red": {
+                    DEFAULT: "#8B0000",
+                    50: "#FFEAEA",
+                    100: "#FFCCCC",
+                    200: "#FF9999",
+                    300: "#FF6666",
+                    400: "#FF3333",
+                    500: "#FF0000",
+                    600: "#CC0000",
+                    700: "#990000",
+                    800: "#660000",
+                    900: "#330000",
+                },
+                "dark-bg": {
+                    DEFAULT: "#121212",
+                    lighter: "#1E1E1E",
+                    light: "#282828",
+                    dark: "#0A0A0A",
+                },
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,12 +105,20 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+                'pulse-red': {
+                    '0%, 100%': { opacity: '1' },
+                    '50%': { opacity: '0.5' },
+                }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+                'pulse-red': 'pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+			},
+            backgroundImage: {
+                'gradient-dark-red': 'linear-gradient(to bottom right, #8B0000, #330000)',
+            }
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
