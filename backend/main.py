@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -65,7 +65,7 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     return UserService.create_user(db, user)
 
 @app.post("/auth/login", response_model=Token)
-async def login(email: str, password: str, db: Session = Depends(get_db)):
+async def login(email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = AuthService.authenticate_user(db, email, password)
     if not user:
         raise HTTPException(
