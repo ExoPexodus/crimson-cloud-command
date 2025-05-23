@@ -1,12 +1,12 @@
-
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
+import logging
 
-from database import engine, get_db
+from database import engine, get_db, SessionLocal
 from models import Base
 from schemas import (
     NodeCreate, NodeResponse, NodeUpdate,
@@ -20,9 +20,23 @@ from services import (
     NodeService, PoolService, MetricService, 
     ScheduleService, UserService, AuthService
 )
+from seed_data import create_default_admin
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Create tables
 Base.metadata.create_all(bind=engine)
+
+# Seed initial data
+logger.info("Running database seeding...")
+db = SessionLocal()
+try:
+    create_default_admin(db)
+finally:
+    db.close()
 
 app = FastAPI(
     title="Oracle Cloud Autoscaling Management API",
