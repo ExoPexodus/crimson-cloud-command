@@ -17,7 +17,7 @@ export function Header() {
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search instances, containers..." 
-            className="bg-dark-bg pl-8 border-dark-bg-light focus-visible:ring-dark-red-400"
+            className="bg-dark-bg pl-8 border-dark-bg-light focus-visible:ring-dark-teal-400"
           />
         </div>
       </div>
@@ -25,10 +25,10 @@ export function Header() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-dark-bg-light relative">
           <Bell size={20} />
-          <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-dark-red-500" />
+          <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-dark-teal-500" />
         </Button>
         
-        <div className="h-8 w-8 rounded-full bg-dark-red-900 border border-dark-red-700 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full bg-dark-teal-900 border border-dark-teal-700 flex items-center justify-center">
           <User size={16} />
         </div>
       </div>

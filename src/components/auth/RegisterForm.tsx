@@ -53,7 +53,7 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
     <div className="min-h-screen flex items-center justify-center bg-dark-bg p-4">
       <Card className="w-full max-w-md glass-card border-dark-bg-light/50">
         <CardHeader className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-md bg-gradient-dark-red flex items-center justify-center mb-4">
+          <div className="mx-auto h-12 w-12 rounded-md bg-gradient-dark-teal flex items-center justify-center mb-4">
             <Server size={24} className="text-white" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
@@ -100,7 +100,7 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
             </div>
             <Button
               type="submit"
-              className="w-full bg-dark-red-600 hover:bg-dark-red-700 text-white"
+              className="w-full bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
               disabled={loading}
             >
               {loading ? 'Creating Account...' : 'Create Account'}

@@ -52,11 +52,11 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
     <div className="min-h-screen flex items-center justify-center bg-dark-bg p-4">
       <Card className="w-full max-w-md glass-card border-dark-bg-light/50">
         <CardHeader className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-md bg-gradient-dark-red flex items-center justify-center mb-4">
+          <div className="mx-auto h-12 w-12 rounded-md bg-gradient-dark-teal flex items-center justify-center mb-4">
             <Server size={24} className="text-white" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
-            OracleOps<span className="text-dark-red-400">.</span>
+            OracleOps<span className="text-dark-teal-400">.</span>
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             Sign in to your autoscaling management dashboard
@@ -88,7 +88,7 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
             </div>
             <Button
               type="submit"
-              className="w-full bg-dark-red-600 hover:bg-dark-red-700 text-white"
+              className="w-full bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
               disabled={loading}
             >
               {loading ? 'Signing in...' : 'Sign In'}
@@ -101,7 +101,7 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
               <Button
                 variant="link"
                 onClick={onShowRegister}
-                className="text-dark-red-400 hover:text-dark-red-300 p-0 h-auto font-normal"
+                className="text-dark-teal-400 hover:text-dark-teal-300 p-0 h-auto font-normal"
               >
                 Create one here
               </Button>

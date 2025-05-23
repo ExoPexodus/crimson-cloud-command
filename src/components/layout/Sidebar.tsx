@@ -48,18 +48,18 @@ export function AppSidebar() {
     <Sidebar className="border-r border-dark-bg-light">
       <SidebarHeader className="py-4">
         <div className={cn("flex items-center gap-2 px-4", !open && "justify-center")}>
-          <div className="h-8 w-8 rounded-md bg-gradient-dark-red flex items-center justify-center">
+          <div className="h-8 w-8 rounded-md bg-gradient-dark-teal flex items-center justify-center">
             <Server size={20} className="text-white" />
           </div>
           {open && (
             <span className="font-bold text-lg text-white">
-              OracleOps<span className="text-dark-red-400">.</span>
+              OracleOps<span className="text-dark-teal-400">.</span>
             </span>
           )}
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="red-scrollbar">
+      <SidebarContent className="teal-scrollbar">
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider">
             {open ? "Management" : ""}
@@ -68,12 +68,12 @@ export function AppSidebar() {
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="hover:bg-dark-red-900/30 data-[active]:bg-dark-red-900/50">
+                  <SidebarMenuButton asChild className="hover:bg-dark-teal-900/30 data-[active]:bg-dark-teal-900/50">
                     <a href={item.url} className={cn(
                       "flex items-center gap-3 rounded-md",
-                      location.pathname === item.url && "bg-dark-red-900/50"
+                      location.pathname === item.url && "bg-dark-teal-900/50"
                     )}>
-                      <item.icon size={20} className={cn("text-muted-foreground", location.pathname === item.url && "text-dark-red-400")} />
+                      <item.icon size={20} className={cn("text-muted-foreground", location.pathname === item.url && "text-dark-teal-400")} />
                       {open && <span>{item.title}</span>}
                     </a>
                   </SidebarMenuButton>
@@ -88,7 +88,7 @@ export function AppSidebar() {
         <SidebarMenu className="p-2">
           {footerItems.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild className="hover:bg-dark-red-900/30">
+              <SidebarMenuButton asChild className="hover:bg-dark-teal-900/30">
                 <a href={item.url} className="flex items-center gap-3 rounded-md">
                   <item.icon size={20} className="text-muted-foreground" />
                   {open && <span>{item.title}</span>}

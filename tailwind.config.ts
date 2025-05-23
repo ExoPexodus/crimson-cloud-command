@@ -63,19 +63,19 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-                // Custom colors for our dark red theme
-                "dark-red": {
-                    DEFAULT: "#8B0000",
-                    50: "#FFEAEA",
-                    100: "#FFCCCC",
-                    200: "#FF9999",
-                    300: "#FF6666",
-                    400: "#FF3333",
-                    500: "#FF0000",
-                    600: "#CC0000",
-                    700: "#990000",
-                    800: "#660000",
-                    900: "#330000",
+                // Custom colors for our teal theme (was dark-red)
+                "dark-teal": {
+                    DEFAULT: "#008080",
+                    50: "#ECFFFF",
+                    100: "#CCFAFA",
+                    200: "#99F5F5",
+                    300: "#66EDED",
+                    400: "#33E5E5",
+                    500: "#00DCDC",
+                    600: "#00BDBD",
+                    700: "#008080", // Main teal color
+                    800: "#006666",
+                    900: "#003333",
                 },
                 "dark-bg": {
                     DEFAULT: "#121212",
@@ -106,7 +106,7 @@ export default {
 						height: '0'
 					}
 				},
-                'pulse-red': {
+                'pulse-teal': { // Changed from pulse-red
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.5' },
                 }
@@ -114,10 +114,10 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-                'pulse-red': 'pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'pulse-teal': 'pulse-teal 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', // Changed from pulse-red
 			},
             backgroundImage: {
-                'gradient-dark-red': 'linear-gradient(to bottom right, #8B0000, #330000)',
+                'gradient-dark-teal': 'linear-gradient(to bottom right, #008080, #003333)', // Changed from gradient-dark-red
             }
 		}
 	},
