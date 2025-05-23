@@ -31,12 +31,12 @@ export function InstancePoolCard({
   onScaleDown
 }: InstancePoolCardProps) {
   return (
-    <Card className="glass-card border-dark-bg-light/50 overflow-hidden">
+    <Card className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
-            <div className="rounded bg-dark-bg p-1.5">
-              <Server size={14} className="text-dark-red-400" />
+            <div className="rounded bg-dark-bg/80 p-1.5">
+              <Server size={14} className="text-dark-teal-400" />
             </div>
             <CardTitle className="text-sm font-medium">{name}</CardTitle>
           </div>
@@ -53,7 +53,7 @@ export function InstancePoolCard({
               <span>CPU</span>
               <span className="text-muted-foreground">{cpuUsage}%</span>
             </div>
-            <Progress value={cpuUsage} className="h-1.5" indicatorClassName="bg-dark-red-500" />
+            <Progress value={cpuUsage} className="h-1.5" indicatorClassName="bg-dark-teal-500" />
           </div>
           
           <div className="space-y-1">
@@ -61,7 +61,7 @@ export function InstancePoolCard({
               <span>Memory</span>
               <span className="text-muted-foreground">{memoryUsage}%</span>
             </div>
-            <Progress value={memoryUsage} className="h-1.5" indicatorClassName="bg-dark-red-400" />
+            <Progress value={memoryUsage} className="h-1.5" indicatorClassName="bg-dark-teal-400" />
           </div>
           
           <div className="space-y-1">
@@ -72,16 +72,16 @@ export function InstancePoolCard({
             <Progress 
               value={(instances / maxInstances) * 100} 
               className="h-1.5" 
-              indicatorClassName="bg-dark-red-600"
+              indicatorClassName="bg-dark-teal-600"
             />
           </div>
         </div>
       </CardContent>
-      <CardFooter className="pt-0 gap-2 flex justify-between border-t border-dark-bg-light/50 p-2">
+      <CardFooter className="pt-0 gap-2 flex justify-between border-t border-dark-bg-light/30 p-2">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-red-900/40"
+          className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
           onClick={onEdit}
         >
           <Edit size={14} />
@@ -91,7 +91,7 @@ export function InstancePoolCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-red-900/40"
+            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
             onClick={onScaleDown}
           >
             <RefreshCw size={14} />
@@ -100,7 +100,7 @@ export function InstancePoolCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-red-900/40"
+            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
             onClick={onScaleUp}
           >
             <Power size={14} />

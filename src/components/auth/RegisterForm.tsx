@@ -50,10 +50,10 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-bg p-4">
-      <Card className="w-full max-w-md glass-card border-dark-bg-light/50">
+    <div className="min-h-screen flex items-center justify-center bg-dark-bg bg-gradient-mesh p-4">
+      <Card className="w-full max-w-md glass-card shadow-xl">
         <CardHeader className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-md bg-gradient-dark-teal flex items-center justify-center mb-4">
+          <div className="mx-auto h-12 w-12 rounded-md bg-gradient-dark-teal flex items-center justify-center mb-4 shadow-lg animate-glow">
             <Server size={24} className="text-white" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
@@ -73,7 +73,7 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                className="bg-dark-bg-lighter border-dark-bg-light text-white"
+                className="bg-dark-bg/60 border-dark-bg-light/40 text-white focus-visible:ring-dark-teal-500"
               />
             </div>
             <div className="space-y-2">
@@ -84,7 +84,7 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-dark-bg-lighter border-dark-bg-light text-white"
+                className="bg-dark-bg/60 border-dark-bg-light/40 text-white focus-visible:ring-dark-teal-500"
               />
             </div>
             <div className="space-y-2">
@@ -95,12 +95,12 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-dark-bg-lighter border-dark-bg-light text-white"
+                className="bg-dark-bg/60 border-dark-bg-light/40 text-white focus-visible:ring-dark-teal-500"
               />
             </div>
             <Button
               type="submit"
-              className="w-full bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
+              className="w-full bg-dark-teal-600 hover:bg-dark-teal-700 text-white shadow-md"
               disabled={loading}
             >
               {loading ? 'Creating Account...' : 'Create Account'}
@@ -111,7 +111,7 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
             <Button
               variant="ghost"
               onClick={onBackToLogin}
-              className="text-muted-foreground hover:text-white"
+              className="text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Login

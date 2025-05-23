@@ -29,8 +29,8 @@ export function StatusIndicator({
       label: label || "Warning",
     },
     error: {
-      color: "bg-dark-red-500",
-      pulseColor: "bg-dark-red-500/50",
+      color: "bg-dark-teal-700",
+      pulseColor: "bg-dark-teal-700/50",
       label: label || "Error",
     },
     inactive: {
@@ -49,7 +49,7 @@ export function StatusIndicator({
           <div className={cn("flex items-center gap-2", className)}>
             <div className="relative flex items-center">
               <div className={`h-2.5 w-2.5 rounded-full ${config.color}`} />
-              <div className={`absolute h-2.5 w-2.5 rounded-full ${config.pulseColor} animate-pulse-red`} />
+              <div className={`absolute h-2.5 w-2.5 rounded-full ${config.pulseColor} animate-pulse-teal`} />
             </div>
             {showLabel && <span className="text-xs text-muted-foreground">{config.label}</span>}
           </div>

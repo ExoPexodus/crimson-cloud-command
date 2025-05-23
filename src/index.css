@@ -5,44 +5,44 @@
 
 @layer base {
   :root {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
+    --background: 200 25% 8%;
+    --foreground: 185 10% 98%;
 
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 200 25% 10%;
+    --card-foreground: 185 10% 98%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 200 25% 10%;
+    --popover-foreground: 185 10% 98%;
 
-    --primary: 175 100% 27%; /* changed from red to teal */
-    --primary-foreground: 0 0% 98%;
+    --primary: 175 70% 41%;
+    --primary-foreground: 185 10% 98%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 200 25% 15%;
+    --secondary-foreground: 185 10% 98%;
 
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 200 25% 20%;
+    --muted-foreground: 185 10% 70%;
 
-    --accent: 175 70% 25%; /* changed from red to teal */
-    --accent-foreground: 0 0% 98%;
+    --accent: 175 60% 35%;
+    --accent-foreground: 185 10% 98%;
 
     --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 185 10% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 175 100% 30%; /* changed from red to teal */
+    --border: 200 25% 18%;
+    --input: 200 25% 18%;
+    --ring: 175 70% 41%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 175 70% 30%; /* changed from red to teal */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 175 70% 30%; /* changed from red to teal */
+    --sidebar-background: 200 30% 10%;
+    --sidebar-foreground: 185 10% 90%;
+    --sidebar-primary: 175 70% 41%;
+    --sidebar-primary-foreground: 185 10% 100%;
+    --sidebar-accent: 200 25% 15%;
+    --sidebar-accent-foreground: 185 10% 90%;
+    --sidebar-border: 200 25% 18%;
+    --sidebar-ring: 175 70% 41%;
   }
 
   * {
@@ -53,23 +53,23 @@
     @apply bg-dark-bg text-foreground;
   }
   
-  .teal-scrollbar::-webkit-scrollbar { /* changed from red-scrollbar */
+  .teal-scrollbar::-webkit-scrollbar {
     width: 8px;
   }
   
-  .teal-scrollbar::-webkit-scrollbar-track { /* changed from red-scrollbar */
+  .teal-scrollbar::-webkit-scrollbar-track {
     @apply bg-dark-bg-lighter;
   }
   
-  .teal-scrollbar::-webkit-scrollbar-thumb { /* changed from red-scrollbar */
-    @apply bg-dark-teal-700 rounded-full; /* changed from dark-red-700 */
+  .teal-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-dark-teal-600 rounded-full;
   }
   
-  .teal-scrollbar::-webkit-scrollbar-thumb:hover { /* changed from red-scrollbar */
-    @apply bg-dark-teal-600; /* changed from dark-red-600 */
+  .teal-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-teal-500;
   }
   
   .glass-card {
-    @apply bg-dark-bg-lighter bg-opacity-70 backdrop-blur-sm border border-dark-bg-light/50;
+    @apply bg-dark-bg-lighter/80 backdrop-blur-sm border border-dark-bg-light/30 shadow-lg shadow-dark-bg/50;
   }
 }

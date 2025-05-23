@@ -63,25 +63,25 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-                // Custom colors for our teal theme (was dark-red)
+                // Custom colors for our teal theme
                 "dark-teal": {
-                    DEFAULT: "#008080",
-                    50: "#ECFFFF",
-                    100: "#CCFAFA",
-                    200: "#99F5F5",
-                    300: "#66EDED",
-                    400: "#33E5E5",
-                    500: "#00DCDC",
-                    600: "#00BDBD",
-                    700: "#008080", // Main teal color
-                    800: "#006666",
-                    900: "#003333",
+                    DEFAULT: "#20B2AA",
+                    50: "#E6F7F6",
+                    100: "#CCEEED",
+                    200: "#99DDDA",
+                    300: "#66CCC8",
+                    400: "#33BBB5",
+                    500: "#20B2AA",
+                    600: "#1B9690",
+                    700: "#167A75",
+                    800: "#0F5D59",
+                    900: "#093F3C",
                 },
                 "dark-bg": {
-                    DEFAULT: "#121212",
-                    lighter: "#1E1E1E",
-                    light: "#282828",
-                    dark: "#0A0A0A",
+                    DEFAULT: "#111520",
+                    lighter: "#1A202C",
+                    light: "#2D3748",
+                    dark: "#0A0D14",
                 },
 			},
 			borderRadius: {
@@ -106,18 +106,24 @@ export default {
 						height: '0'
 					}
 				},
-                'pulse-teal': { // Changed from pulse-red
+                'pulse-teal': {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.5' },
+                },
+                'glow': {
+                    '0%, 100%': { boxShadow: '0 0 5px rgba(32, 178, 170, 0.2)' },
+                    '50%': { boxShadow: '0 0 20px rgba(32, 178, 170, 0.6)' },
                 }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-                'pulse-teal': 'pulse-teal 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', // Changed from pulse-red
+                'pulse-teal': 'pulse-teal 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'glow': 'glow 3s ease-in-out infinite',
 			},
             backgroundImage: {
-                'gradient-dark-teal': 'linear-gradient(to bottom right, #008080, #003333)', // Changed from gradient-dark-red
+                'gradient-dark-teal': 'linear-gradient(135deg, #20B2AA, #093F3C)',
+                'gradient-mesh': 'radial-gradient(at 80% 100%, rgba(32, 178, 170, 0.15) 0px, transparent 50%), radial-gradient(at 0% 0%, rgba(22, 122, 117, 0.1) 0px, transparent 50%)',
             }
 		}
 	},
