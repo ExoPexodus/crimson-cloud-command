@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, Text, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -39,7 +38,7 @@ class Node(Base):
     status = Column(Enum(NodeStatus), default=NodeStatus.ACTIVE)
     last_heartbeat = Column(DateTime(timezone=True))
     version = Column(String(50))
-    metadata = Column(Text)
+    node_metadata = Column(Text)  # Renamed from 'metadata' to 'node_metadata'
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

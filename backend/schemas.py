@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
@@ -27,7 +26,7 @@ class NodeBase(BaseModel):
     ip_address: str
     port: Optional[int] = 8080
     version: Optional[str] = None
-    metadata: Optional[str] = None
+    node_metadata: Optional[str] = None  # Updated from 'metadata' to 'node_metadata'
 
 class NodeCreate(NodeBase):
     api_key: str
@@ -39,7 +38,7 @@ class NodeUpdate(BaseModel):
     port: Optional[int] = None
     status: Optional[NodeStatus] = None
     version: Optional[str] = None
-    metadata: Optional[str] = None
+    node_metadata: Optional[str] = None  # Updated from 'metadata' to 'node_metadata'
 
 class NodeResponse(NodeBase):
     id: int
