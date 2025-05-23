@@ -6,17 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Server } from 'lucide-react';
+import { Server, ArrowLeft } from 'lucide-react';
 
-interface LoginFormProps {
-  onShowRegister: () => void;
+interface RegisterFormProps {
+  onBackToLogin: () => void;
 }
 
-export function LoginForm({ onShowRegister }: LoginFormProps) {
+export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { register } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,23 +25,23 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
     setLoading(true);
 
     try {
-      const success = await login(email, password);
+      const success = await register(email, password, fullName);
       if (success) {
         toast({
           title: 'Success',
-          description: 'Logged in successfully',
+          description: 'Account created and logged in successfully',
         });
       } else {
         toast({
           title: 'Error',
-          description: 'Invalid email or password',
+          description: 'Registration failed. Please try again.',
           variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Login failed. Please try again.',
+        description: 'Registration failed. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -56,14 +57,25 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
             <Server size={24} className="text-white" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
-            OracleOps<span className="text-dark-red-400">.</span>
+            Create Account
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            Sign in to your autoscaling management dashboard
+            Sign up for your autoscaling management dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                className="bg-dark-bg-lighter border-dark-bg-light text-white"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -91,21 +103,19 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
               className="w-full bg-dark-red-600 hover:bg-dark-red-700 text-white"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
           
           <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Button
-                variant="link"
-                onClick={onShowRegister}
-                className="text-dark-red-400 hover:text-dark-red-300 p-0 h-auto font-normal"
-              >
-                Create one here
-              </Button>
-            </p>
+            <Button
+              variant="ghost"
+              onClick={onBackToLogin}
+              className="text-muted-foreground hover:text-white"
+            >
+              <ArrowLeft size={16} className="mr-2" />
+              Back to Login
+            </Button>
           </div>
         </CardContent>
       </Card>

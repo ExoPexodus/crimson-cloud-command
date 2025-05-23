@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -23,7 +23,7 @@ function AuthenticatedApp() {
   }
 
   if (!isAuthenticated) {
-    return <LoginForm />;
+    return <AuthPage />;
   }
 
   return (
