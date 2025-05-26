@@ -35,6 +35,15 @@ def create_default_admin(db: Session):
             db.add(default_admin)
             db.commit()
             logging.info(f"Default admin user created with email: {DEFAULT_ADMIN_EMAIL}")
+            
+            # Import and run mock data creation
+            try:
+                from seed_mock_data import create_mock_data
+                create_mock_data()
+                logging.info("Mock data seeded successfully")
+            except Exception as e:
+                logging.error(f"Failed to seed mock data: {str(e)}")
+            
             return True
         else:
             logging.info(f"Default admin user already exists: {DEFAULT_ADMIN_EMAIL}")

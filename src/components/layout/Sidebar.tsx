@@ -17,32 +17,30 @@ import {
   Home, 
   Server, 
   Settings, 
-  Activity, 
-  Database, 
-  Package, 
-  RefreshCw,
-  LogOut,
-  HelpCircle
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export function AppSidebar() {
   const [open, setOpen] = useState(true);
+  const { logout } = useAuth();
+  const { toast } = useToast();
   
   const navigationItems = [
     { title: "Dashboard", icon: Home, url: "/" },
-    { title: "Instances", icon: Server, url: "#instances" },
-    { title: "Autoscaling", icon: RefreshCw, url: "#autoscaling" },
-    { title: "Containers", icon: Package, url: "#containers" },
-    { title: "Database", icon: Database, url: "#database" },
-    { title: "Monitoring", icon: Activity, url: "#monitoring" },
-    { title: "Settings", icon: Settings, url: "#settings" },
+    { title: "Instance Pools", icon: Server, url: "/instance-pools" },
+    { title: "Settings", icon: Settings, url: "/settings" },
   ];
 
-  const footerItems = [
-    { title: "Help", icon: HelpCircle, url: "#help" },
-    { title: "Log Out", icon: LogOut, url: "#logout" },
-  ];
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    });
+  };
 
   return (
     <Sidebar className="border-r border-dark-bg-light/40 bg-sidebar/80 backdrop-blur-sm">
@@ -89,16 +87,18 @@ export function AppSidebar() {
       
       <SidebarFooter className="border-t border-dark-bg-light/40">
         <SidebarMenu className="p-2">
-          {footerItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild className="hover:bg-dark-teal-800/20 transition-all">
-                <a href={item.url} className="flex items-center gap-3 rounded-md">
-                  <item.icon size={20} className="text-muted-foreground" />
-                  {open && <span>{item.title}</span>}
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              asChild 
+              className="hover:bg-dark-teal-800/20 transition-all cursor-pointer"
+              onClick={handleLogout}
+            >
+              <div className="flex items-center gap-3 rounded-md">
+                <LogOut size={20} className="text-muted-foreground" />
+                {open && <span>Log Out</span>}
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

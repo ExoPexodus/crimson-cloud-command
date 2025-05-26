@@ -1,5 +1,5 @@
 
-import { Server, Power, RefreshCw, Edit } from "lucide-react";
+import { Server, Power, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -13,7 +13,6 @@ interface InstancePoolCardProps {
   region: string;
   cpuUsage: number;
   memoryUsage: number;
-  onEdit?: () => void;
   onScaleUp?: () => void;
   onScaleDown?: () => void;
 }
@@ -26,7 +25,6 @@ export function InstancePoolCard({
   region,
   cpuUsage,
   memoryUsage,
-  onEdit,
   onScaleUp,
   onScaleDown
 }: InstancePoolCardProps) {
@@ -77,35 +75,24 @@ export function InstancePoolCard({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="pt-0 gap-2 flex justify-between border-t border-dark-bg-light/30 p-2">
+      <CardFooter className="pt-0 gap-2 flex justify-center border-t border-dark-bg-light/30 p-2">
         <Button
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
-          onClick={onEdit}
+          onClick={onScaleDown}
         >
-          <Edit size={14} />
+          <RefreshCw size={14} />
         </Button>
         
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
-            onClick={onScaleDown}
-          >
-            <RefreshCw size={14} />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
-            onClick={onScaleUp}
-          >
-            <Power size={14} />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-teal-800/20"
+          onClick={onScaleUp}
+        >
+          <Power size={14} />
+        </Button>
       </CardFooter>
     </Card>
   );
