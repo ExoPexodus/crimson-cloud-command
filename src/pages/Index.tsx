@@ -6,7 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InstancePoolCard } from "@/components/dashboard/InstancePoolCard";
-import { AutoscaleConfig } from "@/components/dashboard/AutoscaleConfig";
+import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { Plus, RefreshCw, Server, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -53,6 +53,27 @@ const recentInstancePools = [
     cpuUsage: 12,
     memoryUsage: 25,
   }
+];
+
+// Mock data for 24-hour metrics
+const poolActivityData = [
+  { name: "00:00", value: 8 },
+  { name: "04:00", value: 6 },
+  { name: "08:00", value: 12 },
+  { name: "12:00", value: 15 },
+  { name: "16:00", value: 18 },
+  { name: "20:00", value: 14 },
+  { name: "24:00", value: 10 }
+];
+
+const instanceCountData = [
+  { name: "00:00", value: 18 },
+  { name: "04:00", value: 12 },
+  { name: "08:00", value: 24 },
+  { name: "12:00", value: 28 },
+  { name: "16:00", value: 32 },
+  { name: "20:00", value: 26 },
+  { name: "24:00", value: 20 }
 ];
 
 const Index = () => {
@@ -143,37 +164,39 @@ const Index = () => {
                   <div className="text-xs text-muted-foreground mt-2">Across 4 pools</div>
                 </Card>
               </div>
+
+              {/* 24-Hour Metrics Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <MetricsChart
+                  data={poolActivityData}
+                  title="Active Pools"
+                  color="#20B2AA"
+                />
+                <MetricsChart
+                  data={instanceCountData}
+                  title="Total Instances"
+                  color="#16A085"
+                />
+              </div>
               
-              {/* Main dashboard content */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left column - Recent Instance pools */}
-                <div className="lg:col-span-2 space-y-6">
-                  <h2 className="text-lg font-medium mb-4">Recently Active Instance Pools</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {recentInstancePools.map((pool) => (
-                      <InstancePoolCard
-                        key={pool.id}
-                        name={pool.name}
-                        instances={pool.instances}
-                        maxInstances={pool.maxInstances}
-                        status={pool.status}
-                        region={pool.region}
-                        cpuUsage={pool.cpuUsage}
-                        memoryUsage={pool.memoryUsage}
-                        onScaleUp={() => toast({ title: "Scale Up", description: `Scaling up ${pool.name}` })}
-                        onScaleDown={() => toast({ title: "Scale Down", description: `Scaling down ${pool.name}` })}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Right column - Configuration */}
-                <div>
-                  <h2 className="text-lg font-medium mb-4">Quick Configuration</h2>
-                  <AutoscaleConfig 
-                    instancePoolId="pool-1" 
-                    onSave={(values) => console.log("Saved config:", values)} 
-                  />
+              {/* Recently Active Instance Pools */}
+              <div>
+                <h2 className="text-lg font-medium mb-4">Recently Active Instance Pools</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {recentInstancePools.map((pool) => (
+                    <InstancePoolCard
+                      key={pool.id}
+                      name={pool.name}
+                      instances={pool.instances}
+                      maxInstances={pool.maxInstances}
+                      status={pool.status}
+                      region={pool.region}
+                      cpuUsage={pool.cpuUsage}
+                      memoryUsage={pool.memoryUsage}
+                      onScaleUp={() => toast({ title: "Scale Up", description: `Scaling up ${pool.name}` })}
+                      onScaleDown={() => toast({ title: "Scale Down", description: `Scaling down ${pool.name}` })}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
