@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InstancePoolCard } from "@/components/dashboard/InstancePoolCard";
+import { PoolConfigDialog } from "@/components/dashboard/PoolConfigDialog";
 import { Plus, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -76,6 +77,15 @@ const allInstancePools = [
 const InstancePools = () => {
   const { toast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
+  const [configDialog, setConfigDialog] = useState<{
+    isOpen: boolean;
+    poolName: string;
+    poolId: string;
+  }>({
+    isOpen: false,
+    poolName: "",
+    poolId: "",
+  });
   
   const handleRefresh = () => {
     setRefreshing(true);
@@ -86,6 +96,22 @@ const InstancePools = () => {
         description: "Instance pools data has been updated",
       });
     }, 1500);
+  };
+
+  const handleConfigurePool = (poolName: string, poolId: string) => {
+    setConfigDialog({
+      isOpen: true,
+      poolName,
+      poolId,
+    });
+  };
+
+  const handleCloseConfigDialog = () => {
+    setConfigDialog({
+      isOpen: false,
+      poolName: "",
+      poolId: "",
+    });
   };
   
   return (
@@ -140,7 +166,7 @@ const InstancePools = () => {
                           variant="outline"
                           size="sm"
                           className="w-full border-dark-teal-600 text-dark-teal-400 hover:bg-dark-teal-800/20"
-                          onClick={() => toast({ title: "Configure", description: `Opening configuration for ${pool.name}` })}
+                          onClick={() => handleConfigurePool(pool.name, pool.id)}
                         >
                           <Edit size={14} className="mr-2" />
                           Configure Pool
@@ -154,6 +180,14 @@ const InstancePools = () => {
           </div>
         </div>
       </div>
+
+      {/* Configuration Dialog */}
+      <PoolConfigDialog
+        isOpen={configDialog.isOpen}
+        onClose={handleCloseConfigDialog}
+        poolName={configDialog.poolName}
+        poolId={configDialog.poolId}
+      />
     </SidebarProvider>
   );
 };
