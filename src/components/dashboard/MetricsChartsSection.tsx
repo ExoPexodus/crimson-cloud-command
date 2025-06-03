@@ -1,8 +1,10 @@
+
 import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
-import { useSystemAnalytics } from "@/lib/hooks";
-import { Card, CardContent, Skeleton } from "@mui/material";
+import { useSystemAnalytics } from "@/hooks/useSystemAnalytics";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PoolAnalytics {
   id: number;
@@ -11,10 +13,15 @@ interface PoolAnalytics {
   avg_cpu_utilization: number;
 }
 
-export const MetricsChartsSection = () => {
-  const { data: analytics, isLoading, error } = useSystemAnalytics();
+interface SystemAnalyticsData {
+  pools?: any[];
+  instances?: any[];
+}
 
-  if (isLoading) {
+export const MetricsChartsSection = () => {
+  const { analytics, loading, error } = useSystemAnalytics();
+
+  if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -48,7 +55,7 @@ export const MetricsChartsSection = () => {
   }
 
   // Safely access data with proper type checking
-  const systemData = analytics as any;
+  const systemData = analytics as SystemAnalyticsData;
   const pools = systemData?.pools || [];
   const instances = systemData?.instances || [];
 
@@ -58,7 +65,7 @@ export const MetricsChartsSection = () => {
 
   const [poolActivityData, setPoolActivityData] = useState<Array<{ name: string; value: number }>>([]);
   const [instanceCountData, setInstanceCountData] = useState<Array<{ name: string; value: number }>>([]);
-  const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(true);
 
   useEffect(() => {
     const fetchMetricsData = async () => {
@@ -98,7 +105,7 @@ export const MetricsChartsSection = () => {
         setPoolActivityData([]);
         setInstanceCountData([]);
       } finally {
-        setLoading(false);
+        setChartLoading(false);
       }
     };
 
@@ -109,7 +116,7 @@ export const MetricsChartsSection = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
+  if (chartLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="h-64 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
