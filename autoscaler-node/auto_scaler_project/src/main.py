@@ -26,21 +26,26 @@ logging.basicConfig(
 )
 
 class AutoscalerNode:
-    def __init__(self):
+    def __init__(self, config):
         """Initialize the autoscaler node with backend integration."""
-        self.backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-        self.api_key = os.getenv("API_KEY", "")
+        # Get backend configuration from config file
+        backend_config = config.get("backend", {})
+        self.backend_url = backend_config.get("url", os.getenv("BACKEND_URL", "http://localhost:8000"))
+        self.node_id = backend_config.get("node_id", 1)
+        self.api_key = backend_config.get("api_key", os.getenv("API_KEY", ""))
         
         if not self.api_key:
             logging.warning("No API_KEY provided. Heartbeat service will be disabled.")
             self.heartbeat_service = None
         else:
-            self.heartbeat_service = HeartbeatService(self.backend_url, self.api_key)
+            self.heartbeat_service = HeartbeatService(self.backend_url, self.node_id, self.api_key)
         
         self.heartbeat_thread = None
         self.stop_heartbeat = threading.Event()
         self.pool_analytics = []
         self.config_hash = None
+
+    # ... keep existing code (start_heartbeat, stop_heartbeat_service, update_configuration, add_pool_analytics methods)
 
     def start_heartbeat(self):
         """Start the heartbeat service in a separate thread."""
@@ -108,6 +113,8 @@ class AutoscalerNode:
             'pool_id': 1,  # This would need to be mapped from config
             **analytics_data
         })
+
+# ... keep existing code (get_collector and process_pool functions)
 
 def get_collector(pool, compute_management_client, monitoring_client):
     """
@@ -262,9 +269,6 @@ def process_pool(pool, autoscaler_node):
 
 def main():
     logging.info("Starting autoscaling process...")
-    
-    # Initialize autoscaler node
-    autoscaler_node = AutoscalerNode()
 
     # Load configuration
     config_path = os.path.join(
@@ -278,11 +282,15 @@ def main():
         # Calculate config hash
         with open(config_path, 'r') as f:
             config_content = f.read()
-        autoscaler_node.config_hash = hashlib.sha256(config_content.encode()).hexdigest()
+        config_hash = hashlib.sha256(config_content.encode()).hexdigest()
         
     except Exception as e:
         logging.error(f"Failed to load configuration file: {e}")
         raise RuntimeError(f"Configuration file load failed: {e}")
+
+    # Initialize autoscaler node with config
+    autoscaler_node = AutoscalerNode(config)
+    autoscaler_node.config_hash = config_hash
 
     # Start heartbeat service
     autoscaler_node.start_heartbeat()

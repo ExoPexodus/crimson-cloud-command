@@ -1,3 +1,4 @@
+
 import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
