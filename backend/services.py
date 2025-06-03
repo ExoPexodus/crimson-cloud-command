@@ -1,16 +1,22 @@
 
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import List, Optional
+from sqlalchemy import desc, func, and_
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import os
+import hashlib
+import json
 
-from models import Node, Pool, Metric, Schedule, User, AuditLog
+from models import (
+    Node, Pool, Metric, Schedule, User, AuditLog, NodeConfiguration, 
+    NodeHeartbeat, PoolAnalytics, SystemAnalytics, NodeStatus, PoolStatus
+)
 from schemas import (
     NodeCreate, NodeUpdate, PoolCreate, PoolUpdate, 
-    MetricCreate, ScheduleCreate, UserCreate
+    MetricCreate, ScheduleCreate, UserCreate, NodeHeartbeatData,
+    PoolAnalyticsData, SystemAnalyticsResponse
 )
 
 # Password hashing
@@ -107,6 +113,191 @@ class NodeService:
             db.commit()
             return True
         return False
+
+class NodeConfigurationService:
+    @staticmethod
+    def get_node_config(db: Session, node_id: int) -> Optional[NodeConfiguration]:
+        return db.query(NodeConfiguration).filter(
+            and_(NodeConfiguration.node_id == node_id, NodeConfiguration.is_active == True)
+        ).first()
+    
+    @staticmethod
+    def update_node_config(db: Session, node_id: int, yaml_config: str) -> NodeConfiguration:
+        # Deactivate old configs
+        db.query(NodeConfiguration).filter(NodeConfiguration.node_id == node_id).update({
+            "is_active": False
+        })
+        
+        # Create new config
+        config_hash = hashlib.sha256(yaml_config.encode()).hexdigest()
+        db_config = NodeConfiguration(
+            node_id=node_id,
+            yaml_config=yaml_config,
+            config_hash=config_hash,
+            is_active=True
+        )
+        db.add(db_config)
+        db.commit()
+        db.refresh(db_config)
+        return db_config
+
+class HeartbeatService:
+    @staticmethod
+    def process_heartbeat(db: Session, node_id: int, heartbeat_data: NodeHeartbeatData) -> Dict[str, Any]:
+        # Update node status and last heartbeat
+        node = db.query(Node).filter(Node.id == node_id).first()
+        if not node:
+            raise ValueError(f"Node {node_id} not found")
+        
+        node.last_heartbeat = datetime.utcnow()
+        node.status = NodeStatus.ACTIVE
+        
+        # Store heartbeat record
+        heartbeat = NodeHeartbeat(
+            node_id=node_id,
+            config_hash=heartbeat_data.config_hash,
+            status=heartbeat_data.status,
+            error_message=heartbeat_data.error_message,
+            metrics_data=heartbeat_data.metrics_data
+        )
+        db.add(heartbeat)
+        
+        # Process pool analytics if provided
+        if heartbeat_data.pool_analytics:
+            AnalyticsService.process_pool_analytics(db, node_id, heartbeat_data.pool_analytics)
+        
+        # Check for configuration drift
+        current_config = NodeConfigurationService.get_node_config(db, node_id)
+        config_update_needed = False
+        
+        if current_config and current_config.config_hash != heartbeat_data.config_hash:
+            config_update_needed = True
+        
+        db.commit()
+        
+        response = {
+            "status": "success",
+            "config_update_needed": config_update_needed,
+            "current_config_hash": current_config.config_hash if current_config else None
+        }
+        
+        if config_update_needed and current_config:
+            response["new_config"] = current_config.yaml_config
+        
+        return response
+
+class AnalyticsService:
+    @staticmethod
+    def process_pool_analytics(db: Session, node_id: int, pool_analytics_list: List[PoolAnalyticsData]):
+        for pool_data in pool_analytics_list:
+            analytics = PoolAnalytics(
+                pool_id=pool_data.pool_id,
+                node_id=node_id,
+                oracle_pool_id=pool_data.oracle_pool_id,
+                current_instances=pool_data.current_instances,
+                active_instances=pool_data.active_instances,
+                avg_cpu_utilization=pool_data.avg_cpu_utilization,
+                avg_memory_utilization=pool_data.avg_memory_utilization,
+                max_cpu_utilization=pool_data.max_cpu_utilization,
+                max_memory_utilization=pool_data.max_memory_utilization,
+                pool_status=pool_data.pool_status,
+                is_active=pool_data.is_active,
+                scaling_event=pool_data.scaling_event,
+                scaling_reason=pool_data.scaling_reason
+            )
+            db.add(analytics)
+        
+        # Calculate and update system analytics
+        AnalyticsService.update_system_analytics(db)
+    
+    @staticmethod
+    def update_system_analytics(db: Session):
+        now = datetime.utcnow()
+        
+        # Get latest pool analytics (within last 5 minutes)
+        recent_analytics = db.query(PoolAnalytics).filter(
+            PoolAnalytics.timestamp >= now - timedelta(minutes=5)
+        ).all()
+        
+        if not recent_analytics:
+            return
+        
+        # Calculate current metrics
+        total_active_pools = len([a for a in recent_analytics if a.is_active])
+        total_current_instances = sum(a.current_instances for a in recent_analytics)
+        total_active_instances = sum(a.active_instances for a in recent_analytics)
+        
+        avg_cpu = sum(a.avg_cpu_utilization for a in recent_analytics) / len(recent_analytics)
+        avg_memory = sum(a.avg_memory_utilization for a in recent_analytics) / len(recent_analytics)
+        max_cpu = max(a.max_cpu_utilization or 0 for a in recent_analytics)
+        max_memory = max(a.max_memory_utilization or 0 for a in recent_analytics)
+        
+        # Calculate 24h peaks
+        yesterday = now - timedelta(hours=24)
+        peak_instances_24h = db.query(func.max(PoolAnalytics.current_instances)).filter(
+            PoolAnalytics.timestamp >= yesterday
+        ).scalar() or 0
+        
+        max_active_pools_24h = db.query(func.count(PoolAnalytics.id)).filter(
+            and_(PoolAnalytics.timestamp >= yesterday, PoolAnalytics.is_active == True)
+        ).group_by(func.date_trunc('hour', PoolAnalytics.timestamp)).order_by(
+            func.count(PoolAnalytics.id).desc()
+        ).first() or 0
+        
+        # Count active nodes
+        active_nodes = db.query(Node).filter(
+            and_(
+                Node.status == NodeStatus.ACTIVE,
+                Node.last_heartbeat >= now - timedelta(minutes=2)
+            )
+        ).count()
+        
+        # Create system analytics record
+        system_analytics = SystemAnalytics(
+            total_active_pools=total_active_pools,
+            total_current_instances=total_current_instances,
+            total_active_instances=total_active_instances,
+            avg_system_cpu=avg_cpu,
+            avg_system_memory=avg_memory,
+            max_system_cpu=max_cpu,
+            max_system_memory=max_memory,
+            peak_instances_24h=peak_instances_24h,
+            max_active_pools_24h=max_active_pools_24h if isinstance(max_active_pools_24h, int) else 0,
+            active_nodes=active_nodes
+        )
+        db.add(system_analytics)
+        db.commit()
+    
+    @staticmethod
+    def get_system_analytics(db: Session) -> SystemAnalyticsResponse:
+        # Get latest system analytics
+        latest = db.query(SystemAnalytics).order_by(desc(SystemAnalytics.timestamp)).first()
+        
+        if not latest:
+            # Return default values if no analytics exist
+            return SystemAnalyticsResponse(
+                total_active_pools=0,
+                total_current_instances=0,
+                peak_instances_24h=0,
+                max_active_pools_24h=0,
+                avg_system_cpu=0,
+                avg_system_memory=0,
+                active_nodes=0,
+                last_updated=datetime.utcnow()
+            )
+        
+        return SystemAnalyticsResponse(
+            total_active_pools=latest.total_active_pools,
+            total_current_instances=latest.total_current_instances,
+            peak_instances_24h=latest.peak_instances_24h,
+            max_active_pools_24h=latest.max_active_pools_24h,
+            avg_system_cpu=latest.avg_system_cpu,
+            avg_system_memory=latest.avg_system_memory,
+            active_nodes=latest.active_nodes,
+            last_updated=latest.timestamp
+        )
+
+# ... keep existing code (PoolService, MetricService, ScheduleService classes remain unchanged)
 
 class PoolService:
     @staticmethod

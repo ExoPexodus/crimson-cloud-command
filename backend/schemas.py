@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from models import NodeStatus, PoolStatus
 
@@ -26,7 +27,7 @@ class NodeBase(BaseModel):
     ip_address: str
     port: Optional[int] = 8080
     version: Optional[str] = None
-    node_metadata: Optional[str] = None  # Updated from 'metadata' to 'node_metadata'
+    node_metadata: Optional[str] = None
 
 class NodeCreate(NodeBase):
     api_key: str
@@ -38,17 +39,94 @@ class NodeUpdate(BaseModel):
     port: Optional[int] = None
     status: Optional[NodeStatus] = None
     version: Optional[str] = None
-    node_metadata: Optional[str] = None  # Updated from 'metadata' to 'node_metadata'
+    node_metadata: Optional[str] = None
 
 class NodeResponse(NodeBase):
     id: int
     status: NodeStatus
     last_heartbeat: Optional[datetime]
+    config_hash: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
     
     class Config:
         from_attributes = True
+
+# Node Configuration schemas
+class NodeConfigurationCreate(BaseModel):
+    yaml_config: str
+
+class NodeConfigurationResponse(BaseModel):
+    id: int
+    node_id: int
+    yaml_config: str
+    config_hash: str
+    version: int
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Pool Analytics schemas
+class PoolAnalyticsData(BaseModel):
+    pool_id: Optional[int] = None
+    oracle_pool_id: str
+    current_instances: int
+    active_instances: int
+    avg_cpu_utilization: float
+    avg_memory_utilization: float
+    max_cpu_utilization: Optional[float] = None
+    max_memory_utilization: Optional[float] = None
+    pool_status: str
+    is_active: bool = True
+    scaling_event: Optional[str] = None
+    scaling_reason: Optional[str] = None
+
+class PoolAnalyticsResponse(BaseModel):
+    id: int
+    pool_id: int
+    node_id: int
+    oracle_pool_id: str
+    timestamp: datetime
+    current_instances: int
+    active_instances: int
+    avg_cpu_utilization: float
+    avg_memory_utilization: float
+    max_cpu_utilization: Optional[float]
+    max_memory_utilization: Optional[float]
+    pool_status: str
+    is_active: bool
+    scaling_event: Optional[str]
+    scaling_reason: Optional[str]
+    
+    class Config:
+        from_attributes = True
+
+# System Analytics schemas
+class SystemAnalyticsResponse(BaseModel):
+    total_active_pools: int
+    total_current_instances: int
+    peak_instances_24h: int
+    max_active_pools_24h: int
+    avg_system_cpu: float
+    avg_system_memory: float
+    active_nodes: int
+    last_updated: datetime
+
+# Heartbeat schemas
+class NodeHeartbeatData(BaseModel):
+    config_hash: str
+    status: str
+    error_message: Optional[str] = None
+    metrics_data: Optional[Dict[str, Any]] = None
+    pool_analytics: Optional[List[PoolAnalyticsData]] = None
+
+class HeartbeatResponse(BaseModel):
+    status: str
+    config_update_needed: bool
+    current_config_hash: Optional[str] = None
+    new_config: Optional[str] = None
 
 # Pool schemas
 class PoolBase(BaseModel):

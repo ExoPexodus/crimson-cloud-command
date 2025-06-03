@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, Depends, HTTPException, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -9,16 +10,18 @@ import logging
 from database import engine, get_db, SessionLocal
 from models import Base
 from schemas import (
-    NodeCreate, NodeResponse, NodeUpdate,
+    NodeCreate, NodeResponse, NodeUpdate, NodeConfigurationCreate, NodeConfigurationResponse,
     PoolCreate, PoolResponse, PoolUpdate,
     MetricCreate, MetricResponse,
     ScheduleCreate, ScheduleResponse,
     UserCreate, UserResponse,
-    Token
+    Token, NodeHeartbeatData, HeartbeatResponse,
+    SystemAnalyticsResponse, PoolAnalyticsResponse
 )
 from services import (
     NodeService, PoolService, MetricService, 
-    ScheduleService, UserService, AuthService
+    ScheduleService, UserService, AuthService,
+    NodeConfigurationService, HeartbeatService, AnalyticsService
 )
 from seed_data import create_default_admin
 
@@ -98,6 +101,54 @@ async def update_node(node_id: int, node: NodeUpdate, db: Session = Depends(get_
 @app.delete("/nodes/{node_id}")
 async def delete_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     return NodeService.delete_node(db, node_id)
+
+# Node Configuration endpoints
+@app.get("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
+async def get_node_config(node_id: int, db: Session = Depends(get_db)):
+    """Get current configuration for a node - used by autoscaling nodes"""
+    config = NodeConfigurationService.get_node_config(db, node_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return config
+
+@app.put("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
+async def update_node_config(node_id: int, config: NodeConfigurationCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Update node configuration - used by central management UI"""
+    return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
+
+# Heartbeat endpoint for autoscaling nodes
+@app.post("/nodes/{node_id}/heartbeat", response_model=HeartbeatResponse)
+async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, db: Session = Depends(get_db)):
+    """Receive heartbeat from autoscaling nodes with metrics and status"""
+    try:
+        response = HeartbeatService.process_heartbeat(db, node_id, heartbeat_data)
+        return HeartbeatResponse(**response)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Analytics endpoints
+@app.get("/analytics/system", response_model=SystemAnalyticsResponse)
+async def get_system_analytics(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Get system-wide analytics and metrics"""
+    return AnalyticsService.get_system_analytics(db)
+
+@app.get("/analytics/pools", response_model=List[PoolAnalyticsResponse])
+async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Get pool analytics for the specified time period"""
+    from datetime import datetime, timedelta
+    from models import PoolAnalytics
+    
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    query = db.query(PoolAnalytics).filter(PoolAnalytics.timestamp >= cutoff_time)
+    
+    if node_id:
+        query = query.filter(PoolAnalytics.node_id == node_id)
+    
+    return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
+
+# ... keep existing code (Pool, Metrics, Schedule endpoints remain unchanged)
 
 # Pool management endpoints
 @app.get("/pools", response_model=List[PoolResponse])

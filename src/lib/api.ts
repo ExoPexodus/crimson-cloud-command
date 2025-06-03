@@ -1,3 +1,4 @@
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
@@ -6,6 +7,35 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ||
 interface ApiResponse<T> {
   data?: T;
   error?: string;
+}
+
+interface SystemAnalytics {
+  total_active_pools: number;
+  total_current_instances: number;
+  peak_instances_24h: number;
+  max_active_pools_24h: number;
+  avg_system_cpu: number;
+  avg_system_memory: number;
+  active_nodes: number;
+  last_updated: string;
+}
+
+interface PoolAnalytics {
+  id: number;
+  pool_id: number;
+  node_id: number;
+  oracle_pool_id: string;
+  timestamp: string;
+  current_instances: number;
+  active_instances: number;
+  avg_cpu_utilization: number;
+  avg_memory_utilization: number;
+  max_cpu_utilization: number | null;
+  max_memory_utilization: number | null;
+  pool_status: string;
+  is_active: boolean;
+  scaling_event: string | null;
+  scaling_reason: string | null;
 }
 
 class ApiClient {
@@ -103,6 +133,18 @@ class ApiClient {
     });
   }
 
+  // Node Configuration
+  async getNodeConfig(nodeId: number): Promise<ApiResponse<any>> {
+    return this.request(`/nodes/${nodeId}/config`);
+  }
+
+  async updateNodeConfig(nodeId: number, yamlConfig: string): Promise<ApiResponse<any>> {
+    return this.request(`/nodes/${nodeId}/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ yaml_config: yamlConfig }),
+    });
+  }
+
   // Pools
   async getPools(): Promise<ApiResponse<any[]>> {
     return this.request('/pools');
@@ -164,6 +206,20 @@ class ApiClient {
     return this.request(`/schedules/${scheduleId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Analytics
+  async getSystemAnalytics(): Promise<ApiResponse<SystemAnalytics>> {
+    return this.request('/analytics/system');
+  }
+
+  async getPoolAnalytics(nodeId?: number, hours: number = 24): Promise<ApiResponse<PoolAnalytics[]>> {
+    const params = new URLSearchParams();
+    if (nodeId) params.append('node_id', nodeId.toString());
+    params.append('hours', hours.toString());
+    
+    const endpoint = `/analytics/pools?${params.toString()}`;
+    return this.request(endpoint);
   }
 
   // Health check

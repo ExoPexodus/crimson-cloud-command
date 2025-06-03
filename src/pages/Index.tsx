@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -10,8 +10,9 @@ import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { Plus, RefreshCw, Server, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { apiClient } from "@/lib/api";
 
-// Mock data for last 4 active instance pools
+// Mock data for recently active pools (will be replaced with real data later)
 const recentInstancePools = [
   {
     id: "pool-1",
@@ -55,7 +56,7 @@ const recentInstancePools = [
   }
 ];
 
-// Mock data for 24-hour metrics
+// Mock data for 24-hour metrics (will be enhanced with real data)
 const poolActivityData = [
   { name: "00:00", value: 8 },
   { name: "04:00", value: 6 },
@@ -76,13 +77,54 @@ const instanceCountData = [
   { name: "24:00", value: 20 }
 ];
 
+interface SystemAnalytics {
+  total_active_pools: number;
+  total_current_instances: number;
+  peak_instances_24h: number;
+  max_active_pools_24h: number;
+  avg_system_cpu: number;
+  avg_system_memory: number;
+  active_nodes: number;
+  last_updated: string;
+}
+
 const Index = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [refreshing, setRefreshing] = useState(false);
+  const [analytics, setAnalytics] = useState<SystemAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const handleRefresh = () => {
+  const fetchAnalytics = async () => {
+    try {
+      const response = await apiClient.getSystemAnalytics();
+      if (response.data) {
+        setAnalytics(response.data);
+      } else if (response.error) {
+        console.error("Error fetching analytics:", response.error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch system analytics",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+    // Set up polling to refresh analytics every 30 seconds
+    const interval = setInterval(fetchAnalytics, 30000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const handleRefresh = async () => {
     setRefreshing(true);
+    await fetchAnalytics();
     setTimeout(() => {
       setRefreshing(false);
       toast({
@@ -90,6 +132,10 @@ const Index = () => {
         description: "Data has been updated from Oracle Cloud API",
       });
     }, 1500);
+  };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString();
   };
   
   return (
@@ -104,7 +150,14 @@ const Index = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
                   <h1 className="text-2xl font-bold mb-1">Instance Management</h1>
-                  <p className="text-sm text-muted-foreground">Monitor and manage your Oracle Cloud instances</p>
+                  <p className="text-sm text-muted-foreground">
+                    Monitor and manage your Oracle Cloud instances
+                    {analytics && (
+                      <span className="ml-2">
+                        • Last updated: {formatTime(analytics.last_updated)}
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div className="flex gap-2 mt-3 sm:mt-0">
                   <Button 
@@ -129,39 +182,51 @@ const Index = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Active Pools (24h)</p>
-                      <h3 className="text-2xl font-bold mt-1">12</h3>
+                      <h3 className="text-2xl font-bold mt-1">
+                        {loading ? "..." : analytics?.total_active_pools || 0}
+                      </h3>
                     </div>
                     <div className="h-10 w-10 rounded-full bg-dark-teal-900/30 flex items-center justify-center">
                       <Server size={20} className="text-dark-teal-400" />
                     </div>
                   </div>
-                  <div className="text-xs text-dark-teal-300 mt-2">+3 from yesterday</div>
+                  <div className="text-xs text-dark-teal-300 mt-2">
+                    Max: {analytics?.max_active_pools_24h || 0} pools today
+                  </div>
                 </Card>
                 
                 <Card className="glass-card border-dark-bg-light/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Peak Instances (24h)</p>
-                      <h3 className="text-2xl font-bold mt-1">28</h3>
+                      <h3 className="text-2xl font-bold mt-1">
+                        {loading ? "..." : analytics?.peak_instances_24h || 0}
+                      </h3>
                     </div>
                     <div className="h-10 w-10 rounded-full bg-dark-teal-900/30 flex items-center justify-center">
                       <Activity size={20} className="text-dark-teal-400" />
                     </div>
                   </div>
-                  <div className="text-xs text-dark-teal-300 mt-2">Peak at 2:30 PM</div>
+                  <div className="text-xs text-dark-teal-300 mt-2">
+                    Avg CPU: {analytics?.avg_system_cpu?.toFixed(1) || 0}%
+                  </div>
                 </Card>
                 
                 <Card className="glass-card border-dark-bg-light/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Current Total Instances</p>
-                      <h3 className="text-2xl font-bold mt-1">14</h3>
+                      <h3 className="text-2xl font-bold mt-1">
+                        {loading ? "..." : analytics?.total_current_instances || 0}
+                      </h3>
                     </div>
                     <div className="h-10 w-10 rounded-full bg-dark-teal-900/30 flex items-center justify-center">
                       <Server size={20} className="text-dark-teal-400" />
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-2">Across 4 pools</div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Active nodes: {analytics?.active_nodes || 0}
+                  </div>
                 </Card>
               </div>
 
