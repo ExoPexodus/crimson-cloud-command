@@ -1,9 +1,9 @@
-
 from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, Text, ForeignKey, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 import enum
+from datetime import datetime
 
 class NodeStatus(enum.Enum):
     ACTIVE = "active"
@@ -50,6 +50,20 @@ class Node(Base):
     configurations = relationship("NodeConfiguration", back_populates="node")
     heartbeats = relationship("NodeHeartbeat", back_populates="node")
     pool_analytics = relationship("PoolAnalytics", back_populates="node")
+    api_keys = relationship("NodeApiKey", back_populates="node")
+
+class NodeApiKey(Base):
+    __tablename__ = "node_api_keys"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    key = Column(String, unique=True, nullable=False, index=True)
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationship
+    node = relationship("Node", back_populates="api_keys")
 
 class NodeConfiguration(Base):
     __tablename__ = "node_configurations"
