@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { Home, Database, Settings, Users, Activity, LogOut } from "lucide-react";
+import { Home, Database, Settings, Users, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -25,11 +25,6 @@ const items = [
     title: "Instance Pools",
     url: "/instance-pools",
     icon: Database,
-  },
-  {
-    title: "Nodes",
-    url: "/nodes",
-    icon: Activity,
   },
 ];
 

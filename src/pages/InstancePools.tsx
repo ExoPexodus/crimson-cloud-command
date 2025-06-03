@@ -9,7 +9,6 @@ import { InstancePoolCard } from "@/components/dashboard/InstancePoolCard";
 import { Plus, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
-import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
 
 interface Pool {
   id: number;
@@ -36,7 +35,6 @@ const InstancePools = () => {
   const [poolMetrics, setPoolMetrics] = useState<Record<number, { cpu: number; memory: number }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [setupDialogOpen, setSetupDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchPoolsData();
@@ -81,7 +79,10 @@ const InstancePools = () => {
   };
 
   const handleCreatePool = () => {
-    setSetupDialogOpen(true);
+    toast({
+      title: "Pool Creation",
+      description: "Pool creation coming soon! Pools are automatically detected from connected autoscaling nodes.",
+    });
   };
 
   const handleScaleAction = async (poolId: number, action: 'up' | 'down', poolName: string) => {
@@ -147,15 +148,13 @@ const InstancePools = () => {
                 <div className="text-center py-12">
                   <h3 className="text-lg font-medium mb-2">No Instance Pools Found</h3>
                   <p className="text-muted-foreground mb-4">
-                    Connect your autoscaling nodes to start seeing pool data here.
+                    Start your autoscaling nodes to see pool data here automatically.
                   </p>
-                  <Button 
-                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
-                    onClick={handleCreatePool}
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Setup Your First Node
-                  </Button>
+                  <div className="bg-dark-bg-light/30 rounded-lg p-4 max-w-md mx-auto">
+                    <p className="text-sm text-muted-foreground">
+                      Pools are automatically detected when autoscaling nodes connect to the backend.
+                    </p>
+                  </div>
                 </div>
               )}
               
@@ -199,12 +198,6 @@ const InstancePools = () => {
           </div>
         </div>
       </div>
-
-      {/* Node Setup Dialog */}
-      <NodeSetupDialog
-        isOpen={setupDialogOpen}
-        onClose={() => setSetupDialogOpen(false)}
-      />
     </SidebarProvider>
   );
 };
