@@ -1,9 +1,50 @@
+
+# Oracle Cloud Autoscaler Configuration
+# Copy this file to config.yaml and update with your settings
+
+# Backend Integration (optional)
+# If provided, the node will register with the central management system
+backend:
+  url: "http://localhost:8000"  # Central backend URL
+  node_id: 1                    # Unique node ID
+  api_key: ""                   # API key for authentication
+
 pools:
-  - instance_pool_id: ""
-    compartment_id: ""
-    region: "india-west"
-    monitoring_method: "oci" or "prometheus"
-    prometheus_url: "http://localhost:9090"
-    cpu_threshold: {min: 10, max: 75}
-    ram_threshold: {min: 20, max: 75}
-    scaling_limits: {min: 2,max: 10}
+  - instance_pool_id: "ocid1.instancepool.oc1.ap-mumbai-1.example"
+    compartment_id: "ocid1.compartment.oc1..example"
+    region: "ap-mumbai-1"
+    monitoring_method: "oci"  # or "prometheus"
+    prometheus_url: "http://localhost:9090"  # Required if monitoring_method is "prometheus"
+    
+    # Scaling thresholds (percentage)
+    cpu_threshold: 
+      min: 10
+      max: 75
+    ram_threshold: 
+      min: 20  
+      max: 75
+    
+    # Scaling limits
+    scaling_limits: 
+      min: 2
+      max: 10
+    
+    # Scheduled scaling (optional)
+    schedules:
+      - name: "business_hours"
+        start_time: "09:00"
+        end_time: "17:00"
+        description: "Scale up during business hours"
+    
+    # Maximum instances for scheduled scaling
+    scheduler_max_instances: 8
+
+  # Additional pools can be added here
+  # - instance_pool_id: "ocid1.instancepool.oc1.us-ashburn-1.example"
+  #   compartment_id: "ocid1.compartment.oc1..example"
+  #   region: "us-ashburn-1"
+  #   monitoring_method: "prometheus"
+  #   prometheus_url: "http://prometheus.example.com:9090"
+  #   cpu_threshold: {min: 15, max: 80}
+  #   ram_threshold: {min: 25, max: 80}
+  #   scaling_limits: {min: 1, max: 5}

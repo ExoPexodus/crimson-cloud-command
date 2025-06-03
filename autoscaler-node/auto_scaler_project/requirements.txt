@@ -1,3 +1,4 @@
+
 alembic==1.14.0
 amqp==5.2.0
 aniso8601==9.0.1
@@ -53,6 +54,7 @@ pillow==10.4.0
 ply==3.11
 prometheus-api-client==0.5.5
 prompt_toolkit==3.0.48
+psutil==5.9.8
 pycparser==2.22
 pyOpenSSL==24.2.1
 pyparsing==3.1.4
