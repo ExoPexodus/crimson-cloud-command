@@ -19,7 +19,7 @@ interface SystemAnalyticsData {
 }
 
 export const MetricsChartsSection = () => {
-  const { analytics, loading, error } = useSystemAnalytics();
+  const { analytics, loading } = useSystemAnalytics();
 
   if (loading) {
     return (
@@ -44,7 +44,7 @@ export const MetricsChartsSection = () => {
     );
   }
 
-  if (error || !analytics) {
+  if (!analytics) {
     return (
       <Card>
         <CardContent className="p-6">
