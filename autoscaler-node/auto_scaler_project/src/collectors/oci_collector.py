@@ -1,4 +1,3 @@
-
 from collectors.base_collector import MetricsCollector
 from instance_manager.instance_pool import get_instances_from_instance_pool
 import logging
@@ -6,7 +5,6 @@ from datetime import datetime, timedelta
 import oci
 from oci.monitoring import MonitoringClient
 import sys
-import time
 
 class OCIMetricsCollector(MetricsCollector):
     def __init__(self, monitoring_client, compute_management_client, instance_manager, instance_pool_id, compartment_id):
@@ -31,7 +29,7 @@ class OCIMetricsCollector(MetricsCollector):
 
     def fetch_instance_metrics(self, instance_id):
         """
-        Fetch metrics (CPU and RAM utilization) for a specific instance with rate limiting protection.
+        Fetch metrics (CPU and RAM utilization) for a specific instance.
 
         Args:
             instance_id: OCID of the instance.
@@ -43,9 +41,6 @@ class OCIMetricsCollector(MetricsCollector):
             namespace = "oci_computeagent"
             end_time = datetime.utcnow()
             start_time = end_time - timedelta(minutes=5)
-
-            # Add delay to prevent rate limiting
-            time.sleep(2)
 
             # Fetch CPU utilization
             cpu_query = f"CpuUtilization[5m]{{resourceId = \"{instance_id}\"}}.max()"
@@ -59,9 +54,6 @@ class OCIMetricsCollector(MetricsCollector):
                     resolution="5m"
                 )
             )
-
-            # Add delay between API calls
-            time.sleep(2)
 
             # Fetch Memory utilization
             memory_query = f"MemoryUtilization[5m]{{resourceId = \"{instance_id}\"}}.max()"
@@ -78,23 +70,17 @@ class OCIMetricsCollector(MetricsCollector):
 
             cpu_utilization = (
                 cpu_response.data[0].aggregated_datapoints[0].value
-                if cpu_response.data and cpu_response.data[0].aggregated_datapoints else 0
+                if cpu_response.data else 0
             )
             memory_utilization = (
                 memory_response.data[0].aggregated_datapoints[0].value
-                if memory_response.data and memory_response.data[0].aggregated_datapoints else 0
+                if memory_response.data else 0
             )
 
             return cpu_utilization, memory_utilization
         except Exception as e:
-            # Check if it's a rate limiting error
-            if hasattr(e, 'status') and e.status == 429:
-                logging.warning(f"Rate limited for instance {instance_id}, waiting 30 seconds...")
-                time.sleep(30)
-                return 0, 0
-            else:
-                logging.error(f"Failed to fetch metrics for instance {instance_id}: {e}")
-                return 0, 0
+            logging.error(f"Failed to fetch metrics for instance {instance_id}: {e}")
+            return 0, 0
 
     def get_metrics(self):
         """
@@ -123,13 +109,12 @@ class OCIMetricsCollector(MetricsCollector):
             total_cpu = 0
             total_memory = 0
             instance_count = len(instances)
-            successful_metrics = 0
             logging.debug(f"Number of instances in pool: {instance_count}")
 
-            # Fetch metrics for each instance with rate limiting protection
-            for i, instance in enumerate(instances):
+            # Fetch metrics for each instance
+            for instance in instances:
                 instance_id = instance.id
-                logging.debug(f"Fetching metrics for instance {i+1}/{instance_count}: {instance_id}")
+                logging.debug(f"Fetching metrics for instance: {instance_id}")
 
                 try:
                     cpu, memory = self.fetch_instance_metrics(instance_id)
@@ -137,21 +122,15 @@ class OCIMetricsCollector(MetricsCollector):
 
                     total_cpu += cpu
                     total_memory += memory
-                    successful_metrics += 1
                 except Exception as metric_error:
-                    logging.warning(f"Failed to fetch metrics for instance {instance_id}: {metric_error}")
-                    # Continue with other instances instead of failing completely
+                    raise RuntimeError(
+                        f"Failed to fetch metrics for instance {instance_id}: {metric_error}"
+                    )
 
-            # Calculate averages based on successful metrics only
-            if successful_metrics > 0:
-                avg_cpu = total_cpu / successful_metrics
-                avg_memory = total_memory / successful_metrics
-            else:
-                logging.warning("No successful metric collections, returning 0 values")
-                avg_cpu = 0
-                avg_memory = 0
+            avg_cpu = total_cpu / instance_count if instance_count > 0 else 0
+            avg_memory = total_memory / instance_count if instance_count > 0 else 0
 
-            logging.info(f"Average CPU: {avg_cpu}%, Average RAM: {avg_memory}% (based on {successful_metrics}/{instance_count} instances)")
+            logging.info(f"Average CPU: {avg_cpu}%, Average RAM: {avg_memory}%")
             return avg_cpu, avg_memory
 
         except RuntimeError as re:

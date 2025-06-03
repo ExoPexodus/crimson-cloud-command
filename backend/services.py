@@ -1,4 +1,3 @@
-
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_
 from typing import List, Optional, Dict, Any
@@ -8,10 +7,11 @@ from jose import JWTError, jwt
 import os
 import hashlib
 import json
+import secrets
 
 from models import (
     Node, Pool, Metric, Schedule, User, AuditLog, NodeConfiguration, 
-    NodeHeartbeat, PoolAnalytics, SystemAnalytics, NodeStatus, PoolStatus
+    NodeHeartbeat, PoolAnalytics, SystemAnalytics, NodeStatus, PoolStatus, NodeApiKey
 )
 from schemas import (
     NodeCreate, NodeUpdate, PoolCreate, PoolUpdate, 
@@ -66,7 +66,7 @@ class AuthService:
     @staticmethod
     def verify_node_api_key(db: Session, api_key: str):
         """Verify API key for node authentication"""
-        return db.query(Node).filter(Node.api_key == api_key).first()
+        return NodeApiKeyService.verify_api_key(db, api_key)
 
 class UserService:
     @staticmethod
@@ -191,8 +191,6 @@ class HeartbeatService:
         
         return response
 
-# ... keep existing code (AnalyticsService, PoolService, MetricService, ScheduleService classes remain unchanged)
-
 class AnalyticsService:
     @staticmethod
     def process_pool_analytics(db: Session, node_id: int, pool_analytics_list: List[PoolAnalyticsData]):
@@ -303,6 +301,53 @@ class AnalyticsService:
             active_nodes=latest.active_nodes,
             last_updated=latest.timestamp
         )
+
+class NodeApiKeyService:
+    @staticmethod
+    def create_api_key(db: Session, node_id: int, name: str) -> 'NodeApiKey':
+        from models import NodeApiKey
+        
+        # Generate a secure API key
+        api_key = f"node_{secrets.token_urlsafe(32)}"
+        
+        db_api_key = NodeApiKey(
+            name=name,
+            key=api_key,
+            node_id=node_id
+        )
+        db.add(db_api_key)
+        db.commit()
+        db.refresh(db_api_key)
+        return db_api_key
+    
+    @staticmethod
+    def verify_api_key(db: Session, api_key: str) -> Optional['Node']:
+        from models import NodeApiKey, Node
+        
+        api_key_record = db.query(NodeApiKey).filter(
+            and_(NodeApiKey.key == api_key, NodeApiKey.is_active == True)
+        ).first()
+        
+        if api_key_record:
+            return api_key_record.node
+        return None
+    
+    @staticmethod
+    def get_api_keys_for_node(db: Session, node_id: int) -> List['NodeApiKey']:
+        from models import NodeApiKey
+        return db.query(NodeApiKey).filter(NodeApiKey.node_id == node_id).all()
+    
+    @staticmethod
+    def deactivate_api_key(db: Session, api_key_id: int) -> bool:
+        from models import NodeApiKey
+        api_key = db.query(NodeApiKey).filter(NodeApiKey.id == api_key_id).first()
+        if api_key:
+            api_key.is_active = False
+            db.commit()
+            return True
+        return False
+
+# ... keep existing code (PoolService, MetricService, ScheduleService classes remain unchanged)
 
 class PoolService:
     @staticmethod

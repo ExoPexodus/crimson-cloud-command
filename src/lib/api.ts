@@ -1,4 +1,7 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? `http://${window.location.hostname}:8000` 
+    : 'http://localhost:8000');
 
 interface ApiResponse<T> {
   data?: T;
@@ -45,88 +48,145 @@ interface NodeApiKey {
 
 class ApiClient {
   private baseURL: string;
+  private token: string | null = null;
 
-  constructor(baseURL: string = API_BASE_URL) {
+  constructor(baseURL: string) {
     this.baseURL = baseURL;
+    this.token = localStorage.getItem('access_token');
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-    try {
-      const url = `${this.baseURL}${endpoint}`;
-      const token = localStorage.getItem('access_token');
-      
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-          ...options.headers,
-        },
-        ...options,
-      });
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+        ...options.headers,
+      },
+      ...options,
+    };
 
+    try {
+      const response = await fetch(url, config);
+      
       if (!response.ok) {
         const errorText = await response.text();
-        return { error: errorText || `HTTP ${response.status}` };
+        return { error: `HTTP ${response.status}: ${errorText}` };
       }
 
       const data = await response.json();
       return { data };
     } catch (error) {
-      console.error('API request failed:', error);
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
-  // Auth methods
+  // Authentication
   async login(email: string, password: string): Promise<ApiResponse<{ access_token: string; token_type: string }>> {
     const formData = new FormData();
     formData.append('email', email);
     formData.append('password', password);
-
-    return this.request('/auth/login', {
+    
+    const result = await this.request<{ access_token: string; token_type: string }>('/auth/login', {
       method: 'POST',
-      headers: {},
       body: formData,
+      headers: {}, // Remove Content-Type to let browser set it for FormData
     });
+    
+    if (result.data) {
+      this.token = result.data.access_token;
+      localStorage.setItem('access_token', this.token);
+    }
+    
+    return result;
   }
 
-  async register(userData: { email: string; password: string; full_name: string }): Promise<ApiResponse<any>> {
+  async register(email: string, password: string, fullName: string): Promise<ApiResponse<any>> {
     return this.request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify(userData),
+      body: JSON.stringify({ email, password, full_name: fullName }),
     });
   }
 
-  // System analytics
-  async getSystemAnalytics(): Promise<ApiResponse<any>> {
-    return this.request('/analytics/system');
+  logout() {
+    this.token = null;
+    localStorage.removeItem('access_token');
   }
 
-  // Pool analytics
-  async getPoolAnalytics(nodeId?: number, hours: number = 24): Promise<ApiResponse<any[]>> {
-    const params = new URLSearchParams();
-    if (nodeId) params.append('node_id', nodeId.toString());
-    params.append('hours', hours.toString());
-    
-    return this.request(`/analytics/pools?${params.toString()}`);
+  // Nodes
+  async getNodes(): Promise<ApiResponse<any[]>> {
+    return this.request('/nodes');
   }
 
-  // Pool management
+  async createNode(node: any): Promise<ApiResponse<any>> {
+    return this.request('/nodes', {
+      method: 'POST',
+      body: JSON.stringify(node),
+    });
+  }
+
+  async updateNode(nodeId: number, node: any): Promise<ApiResponse<any>> {
+    return this.request(`/nodes/${nodeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(node),
+    });
+  }
+
+  async deleteNode(nodeId: number): Promise<ApiResponse<void>> {
+    return this.request(`/nodes/${nodeId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Node Configuration
+  async getNodeConfig(nodeId: number): Promise<ApiResponse<any>> {
+    return this.request(`/nodes/${nodeId}/config`);
+  }
+
+  async updateNodeConfig(nodeId: number, yamlConfig: string): Promise<ApiResponse<any>> {
+    return this.request(`/nodes/${nodeId}/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ yaml_config: yamlConfig }),
+    });
+  }
+
+  // Node API Key management
+  async createNodeApiKey(nodeId: number, name: string): Promise<ApiResponse<NodeApiKey>> {
+    return this.request(`/nodes/${nodeId}/api-keys`, {
+      method: 'POST',
+      body: JSON.stringify({ name, node_id: nodeId }),
+    });
+  }
+
+  async getNodeApiKeys(nodeId: number): Promise<ApiResponse<NodeApiKey[]>> {
+    return this.request(`/nodes/${nodeId}/api-keys`);
+  }
+
+  async deactivateApiKey(apiKeyId: number): Promise<ApiResponse<void>> {
+    return this.request(`/api-keys/${apiKeyId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Pools
   async getPools(): Promise<ApiResponse<any[]>> {
     return this.request('/pools');
   }
 
-  async createPool(poolData: any): Promise<ApiResponse<any>> {
+  async createPool(pool: any): Promise<ApiResponse<any>> {
     return this.request('/pools', {
       method: 'POST',
-      body: JSON.stringify(poolData),
+      body: JSON.stringify(pool),
     });
   }
 
-  async updatePool(poolId: number, poolData: any): Promise<ApiResponse<any>> {
+  async updatePool(poolId: number, pool: any): Promise<ApiResponse<any>> {
     return this.request(`/pools/${poolId}`, {
       method: 'PUT',
-      body: JSON.stringify(poolData),
+      body: JSON.stringify(pool),
     });
   }
 
@@ -138,8 +198,15 @@ class ApiClient {
 
   // Metrics
   async getMetrics(nodeId?: number): Promise<ApiResponse<any[]>> {
-    const params = nodeId ? `?node_id=${nodeId}` : '';
-    return this.request(`/metrics${params}`);
+    const endpoint = nodeId ? `/metrics?node_id=${nodeId}` : '/metrics';
+    return this.request(endpoint);
+  }
+
+  async createMetric(metric: any): Promise<ApiResponse<any>> {
+    return this.request('/metrics', {
+      method: 'POST',
+      body: JSON.stringify(metric),
+    });
   }
 
   // Schedules
@@ -147,17 +214,17 @@ class ApiClient {
     return this.request('/schedules');
   }
 
-  async createSchedule(scheduleData: any): Promise<ApiResponse<any>> {
+  async createSchedule(schedule: any): Promise<ApiResponse<any>> {
     return this.request('/schedules', {
       method: 'POST',
-      body: JSON.stringify(scheduleData),
+      body: JSON.stringify(schedule),
     });
   }
 
-  async updateSchedule(scheduleId: number, scheduleData: any): Promise<ApiResponse<any>> {
+  async updateSchedule(scheduleId: number, schedule: any): Promise<ApiResponse<any>> {
     return this.request(`/schedules/${scheduleId}`, {
       method: 'PUT',
-      body: JSON.stringify(scheduleData),
+      body: JSON.stringify(schedule),
     });
   }
 
@@ -166,6 +233,26 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Analytics
+  async getSystemAnalytics(): Promise<ApiResponse<SystemAnalytics>> {
+    return this.request('/analytics/system');
+  }
+
+  async getPoolAnalytics(nodeId?: number, hours: number = 24): Promise<ApiResponse<PoolAnalytics[]>> {
+    const params = new URLSearchParams();
+    if (nodeId) params.append('node_id', nodeId.toString());
+    params.append('hours', hours.toString());
+    
+    const endpoint = `/analytics/pools?${params.toString()}`;
+    return this.request(endpoint);
+  }
+
+  // Health check
+  async healthCheck(): Promise<ApiResponse<{ status: string; message: string }>> {
+    return this.request('/health');
+  }
 }
 
-export const apiClient = new ApiClient();
+export const apiClient = new ApiClient(API_BASE_URL);
+export default apiClient;

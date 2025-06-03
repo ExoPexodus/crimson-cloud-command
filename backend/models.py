@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, Text, ForeignKey, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -36,7 +35,7 @@ class Node(Base):
     region = Column(String(100), nullable=False)
     ip_address = Column(String(45), nullable=False)
     port = Column(Integer, default=8080)
-    api_key = Column(String(255), unique=True, nullable=False, index=True)
+    api_key = Column(String(255), nullable=False)
     status = Column(Enum(NodeStatus), default=NodeStatus.ACTIVE)
     last_heartbeat = Column(DateTime(timezone=True))
     version = Column(String(50))
@@ -51,8 +50,20 @@ class Node(Base):
     configurations = relationship("NodeConfiguration", back_populates="node")
     heartbeats = relationship("NodeHeartbeat", back_populates="node")
     pool_analytics = relationship("PoolAnalytics", back_populates="node")
+    api_keys = relationship("NodeApiKey", back_populates="node")
 
-# ... keep existing code (all other model classes remain unchanged)
+class NodeApiKey(Base):
+    __tablename__ = "node_api_keys"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    key = Column(String, unique=True, nullable=False, index=True)
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationship
+    node = relationship("Node", back_populates="api_keys")
 
 class NodeConfiguration(Base):
     __tablename__ = "node_configurations"

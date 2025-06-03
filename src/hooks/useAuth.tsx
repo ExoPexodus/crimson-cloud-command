@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await apiClient.login(email, password);
       if (result.data) {
-        localStorage.setItem('access_token', result.data.access_token);
         setIsAuthenticated(true);
         return true;
       }
@@ -42,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, fullName: string): Promise<boolean> => {
     try {
-      const result = await apiClient.register({ email, password, full_name: fullName });
+      const result = await apiClient.register(email, password, fullName);
       if (result.data) {
         // Auto-login after registration
         return await login(email, password);
@@ -55,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
+    apiClient.logout();
     setIsAuthenticated(false);
   };
 

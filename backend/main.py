@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, Depends, HTTPException, status, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -16,12 +15,14 @@ from schemas import (
     ScheduleCreate, ScheduleResponse,
     UserCreate, UserResponse,
     Token, NodeHeartbeatData, HeartbeatResponse,
-    SystemAnalyticsResponse, PoolAnalyticsResponse
+    SystemAnalyticsResponse, PoolAnalyticsResponse,
+    NodeApiKeyCreate, NodeApiKeyResponse
 )
 from services import (
     NodeService, PoolService, MetricService, 
     ScheduleService, UserService, AuthService,
-    NodeConfigurationService, HeartbeatService, AnalyticsService
+    NodeConfigurationService, HeartbeatService, AnalyticsService,
+    NodeApiKeyService
 )
 from seed_data import create_default_admin
 
@@ -62,7 +63,7 @@ security = HTTPBearer()
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
     return AuthService.verify_token(credentials.credentials, db)
 
-# Dependency to get node from API key (auto-register if needed)
+# Dependency to get node from API key
 async def get_node_from_api_key(x_api_key: str = Header(None), db: Session = Depends(get_db)):
     if not x_api_key:
         raise HTTPException(status_code=401, detail="API key required")
@@ -89,6 +90,46 @@ async def login(email: str = Form(...), password: str = Form(...), db: Session =
     access_token = AuthService.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
+# Node API key management endpoints
+@app.post("/nodes/{node_id}/api-keys", response_model=NodeApiKeyResponse)
+async def create_node_api_key(node_id: int, api_key_data: NodeApiKeyCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return NodeApiKeyService.create_api_key(db, node_id, api_key_data.name)
+
+@app.get("/nodes/{node_id}/api-keys", response_model=List[NodeApiKeyResponse])
+async def get_node_api_keys(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return NodeApiKeyService.get_api_keys_for_node(db, node_id)
+
+@app.delete("/api-keys/{api_key_id}")
+async def deactivate_api_key(api_key_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    success = NodeApiKeyService.deactivate_api_key(db, api_key_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="API key not found")
+    return {"message": "API key deactivated"}
+
+# Node management endpoints
+@app.get("/nodes", response_model=List[NodeResponse])
+async def get_nodes(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return NodeService.get_nodes(db)
+
+@app.post("/nodes", response_model=NodeResponse)
+async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return NodeService.create_node(db, node)
+
+@app.get("/nodes/{node_id}", response_model=NodeResponse)
+async def get_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    node = NodeService.get_node(db, node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return node
+
+@app.put("/nodes/{node_id}", response_model=NodeResponse)
+async def update_node(node_id: int, node: NodeUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return NodeService.update_node(db, node_id, node)
+
+@app.delete("/nodes/{node_id}")
+async def delete_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return NodeService.delete_node(db, node_id)
+
 # Node Configuration endpoints
 @app.get("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
 async def get_node_config(node_id: int, db: Session = Depends(get_db), node = Depends(get_node_from_api_key)):
@@ -106,27 +147,15 @@ async def update_node_config(node_id: int, config: NodeConfigurationCreate, db: 
     """Update node configuration - used by central management UI"""
     return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
 
-# Heartbeat endpoint for autoscaling nodes (auto-registers nodes)
-@app.post("/heartbeat", response_model=HeartbeatResponse)
-async def node_heartbeat(heartbeat_data: NodeHeartbeatData, x_api_key: str = Header(None), db: Session = Depends(get_db)):
+# Heartbeat endpoint for autoscaling nodes
+@app.post("/nodes/{node_id}/heartbeat", response_model=HeartbeatResponse)
+async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, db: Session = Depends(get_db), node = Depends(get_node_from_api_key)):
     """Receive heartbeat from autoscaling nodes with metrics and status"""
-    if not x_api_key:
-        raise HTTPException(status_code=401, detail="API key required")
-    
-    # Auto-register node if it doesn't exist
-    node = AuthService.verify_node_api_key(db, x_api_key)
-    if not node:
-        # Create new node with basic info from heartbeat
-        node_data = NodeCreate(
-            name=f"Node-{x_api_key[:8]}",
-            region="auto-detected",
-            ip_address="auto-detected",
-            api_key=x_api_key
-        )
-        node = NodeService.create_node(db, node_data)
+    if node.id != node_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     try:
-        response = HeartbeatService.process_heartbeat(db, node.id, heartbeat_data)
+        response = HeartbeatService.process_heartbeat(db, node_id, heartbeat_data)
         return HeartbeatResponse(**response)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

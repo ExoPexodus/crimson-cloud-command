@@ -2,9 +2,6 @@
 import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
-import { useSystemAnalytics } from "@/hooks/useSystemAnalytics";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface PoolAnalytics {
   id: number;
@@ -13,59 +10,10 @@ interface PoolAnalytics {
   avg_cpu_utilization: number;
 }
 
-interface SystemAnalyticsData {
-  pools?: any[];
-  instances?: any[];
-}
-
-export const MetricsChartsSection = () => {
-  const { analytics, loading } = useSystemAnalytics();
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[200px]" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[200px]" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!analytics) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-muted-foreground">Unable to load metrics data</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Safely access data with proper type checking
-  const systemData = analytics as SystemAnalyticsData;
-  const pools = systemData?.pools || [];
-  const instances = systemData?.instances || [];
-
-  // Calculate total metrics
-  const totalCpuUtilization = pools.reduce((acc: number, pool: any) => acc + (pool?.avg_cpu_utilization || 0), 0) / Math.max(pools.length, 1);
-  const totalMemoryUtilization = pools.reduce((acc: number, pool: any) => acc + (pool?.avg_memory_utilization || 0), 0) / Math.max(pools.length, 1);
-
+export function MetricsChartsSection() {
   const [poolActivityData, setPoolActivityData] = useState<Array<{ name: string; value: number }>>([]);
   const [instanceCountData, setInstanceCountData] = useState<Array<{ name: string; value: number }>>([]);
-  const [chartLoading, setChartLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMetricsData = async () => {
@@ -105,7 +53,7 @@ export const MetricsChartsSection = () => {
         setPoolActivityData([]);
         setInstanceCountData([]);
       } finally {
-        setChartLoading(false);
+        setLoading(false);
       }
     };
 
@@ -116,7 +64,7 @@ export const MetricsChartsSection = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (chartLoading) {
+  if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="h-64 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
@@ -139,4 +87,4 @@ export const MetricsChartsSection = () => {
       />
     </div>
   );
-};
+}
