@@ -22,7 +22,7 @@ class HeartbeatService:
         self.api_key = api_key
         self.session = requests.Session()
         self.session.headers.update({
-            'Authorization': f'Bearer {api_key}',
+            'X-API-Key': api_key,  # Use X-API-Key header instead of Bearer
             'Content-Type': 'application/json'
         })
         
@@ -49,7 +49,8 @@ class HeartbeatService:
                 'metrics_data': self._collect_system_metrics()
             }
             
-            url = f"{self.backend_url}/nodes/{self.node_id}/heartbeat"
+            # Use the correct endpoint path that matches backend main.py
+            url = f"{self.backend_url}/heartbeat"
             response = self.session.post(url, json=heartbeat_data, timeout=30)
             
             if response.status_code == 200:
