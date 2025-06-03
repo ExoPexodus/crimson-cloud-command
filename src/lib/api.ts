@@ -1,3 +1,4 @@
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
@@ -35,15 +36,6 @@ interface PoolAnalytics {
   is_active: boolean;
   scaling_event: string | null;
   scaling_reason: string | null;
-}
-
-interface NodeApiKey {
-  id: number;
-  name: string;
-  key: string;
-  node_id: number;
-  created_at: string;
-  is_active: boolean;
 }
 
 class ApiClient {
@@ -150,24 +142,6 @@ class ApiClient {
     return this.request(`/nodes/${nodeId}/config`, {
       method: 'PUT',
       body: JSON.stringify({ yaml_config: yamlConfig }),
-    });
-  }
-
-  // Node API Key management
-  async createNodeApiKey(nodeId: number, name: string): Promise<ApiResponse<NodeApiKey>> {
-    return this.request(`/nodes/${nodeId}/api-keys`, {
-      method: 'POST',
-      body: JSON.stringify({ name, node_id: nodeId }),
-    });
-  }
-
-  async getNodeApiKeys(nodeId: number): Promise<ApiResponse<NodeApiKey[]>> {
-    return this.request(`/nodes/${nodeId}/api-keys`);
-  }
-
-  async deactivateApiKey(apiKeyId: number): Promise<ApiResponse<void>> {
-    return this.request(`/api-keys/${apiKeyId}`, {
-      method: 'DELETE',
     });
   }
 
