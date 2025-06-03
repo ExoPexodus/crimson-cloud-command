@@ -1,4 +1,0 @@
-[submodule "autoscaling-node"]
-	path = autoscaling-node
-	url = https://github.com/ExoPexodus/python-oci.git
-	branch = cli-based-tool
