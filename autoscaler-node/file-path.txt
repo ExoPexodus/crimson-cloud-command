@@ -1,0 +1,25 @@
+auto_scaler-Project:
+            Logs: autoscaling.log
+            src:
+                collectors:
+                    base_collector.py
+                    oci_collector.py
+                    prometheus_collector.py
+                instance_manager:
+                    instance_pool.py
+                    load_balancer.py
+                oracle_sdk_wrapper:
+                    oci_scaling.py
+                prometheus_metrics:
+                    prometheus_client.py
+                scaling_logic:
+                    auto_scaler.py
+                user_config:
+                    config_manager.py
+                    yaml_loader.py
+                main.py
+            .env
+            config.yaml
+            docker-compose.yaml
+            dockerfile
+            

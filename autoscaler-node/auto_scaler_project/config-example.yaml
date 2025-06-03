@@ -1,0 +1,9 @@
+pools:
+  - instance_pool_id: ""
+    compartment_id: ""
+    region: "india-west"
+    monitoring_method: "oci" or "prometheus"
+    prometheus_url: "http://localhost:9090"
+    cpu_threshold: {min: 10, max: 75}
+    ram_threshold: {min: 20, max: 75}
+    scaling_limits: {min: 2,max: 10}

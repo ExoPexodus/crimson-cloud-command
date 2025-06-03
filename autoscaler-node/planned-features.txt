@@ -1,0 +1,8 @@
+new features to be added
+
+- Need a scheduler component that will work indenpendently of our autoscaler component(probably will need to use multithreading to achieve this) and will add multiple instances inside the instance pool at the same time for a given period of time when we know the user intensity will be at its max.
+{The scheduler needs to keep in mind how many instances will spin up at a given time so that it can teminate those exact amount of instances after the given time is over, it should also support multiple time frames as well(start time and end time) since we might need to spin this up multiple times in a single day}
+- another thing to note down is that, the autoscaler should not be able to reduce the size of the instance pool that its monitoring as long as the scheduler is still doing its work.... once the secheduler finished its work and removes all the instances that it automatically spinned up, then we can let autoscaler scale down things on its own again
+{this can be achieved as long as we're able to run both the main code and the scheduler component in seperate threads and tell our main thread to check if this scheduler thread is currently running or not, if the scheduler thread is running, stop its scaling down feature, if its not runnig then it can scale down when needed}
+- need to figure out a way for the autoscaler to dynamically increase the intensity of the scaling depending on how much the load increased all of a sudden in order to deal with sudden spikes of requests or usage on those instances
+{we can work on this later}

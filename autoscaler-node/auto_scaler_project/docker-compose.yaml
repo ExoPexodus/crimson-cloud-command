@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  autoscaler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: autoscaler
+    env_file:
+      - .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./logs/autoscaling.log:/app/autoscaling.log
+      - ./privatekey.pem:/app/privatekey.pem
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
