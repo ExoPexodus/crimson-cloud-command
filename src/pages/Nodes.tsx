@@ -5,10 +5,12 @@ import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, RefreshCw, Settings, Activity } from "lucide-react";
+import { Plus, RefreshCw, Settings, Activity, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
+import { AddNodeDialog } from "@/components/dashboard/AddNodeDialog";
+import { NodeApiKeysDialog } from "@/components/dashboard/NodeApiKeysDialog";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
 
 interface Node {
@@ -26,6 +28,9 @@ const Nodes = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
+  const [addNodeDialogOpen, setAddNodeDialogOpen] = useState(false);
+  const [apiKeysDialogOpen, setApiKeysDialogOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   useEffect(() => {
     fetchNodes();
@@ -55,8 +60,13 @@ const Nodes = () => {
     fetchNodes();
   };
 
-  const handleCreateNode = () => {
-    setSetupDialogOpen(true);
+  const handleAddNode = () => {
+    setAddNodeDialogOpen(true);
+  };
+
+  const handleManageApiKeys = (node: Node) => {
+    setSelectedNode(node);
+    setApiKeysDialogOpen(true);
   };
 
   const getNodeStatus = (node: Node): "healthy" | "warning" | "error" | "inactive" => {
@@ -115,11 +125,18 @@ const Nodes = () => {
                     {refreshing ? 'Refreshing...' : 'Refresh'}
                   </Button>
                   <Button 
+                    variant="outline"
+                    className="text-sm"
+                    onClick={() => setSetupDialogOpen(true)}
+                  >
+                    Setup Guide
+                  </Button>
+                  <Button 
                     className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white text-sm"
-                    onClick={handleCreateNode}
+                    onClick={handleAddNode}
                   >
                     <Plus size={16} className="mr-2" />
-                    Add New Node
+                    Add Node
                   </Button>
                 </div>
               </div>
@@ -141,13 +158,21 @@ const Nodes = () => {
                   <p className="text-muted-foreground mb-4">
                     Connect your first autoscaling node to start managing your Oracle Cloud instances.
                   </p>
-                  <Button 
-                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
-                    onClick={handleCreateNode}
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Setup Your First Node
-                  </Button>
+                  <div className="flex justify-center gap-3">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setSetupDialogOpen(true)}
+                    >
+                      View Setup Guide
+                    </Button>
+                    <Button 
+                      className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
+                      onClick={handleAddNode}
+                    >
+                      <Plus size={16} className="mr-2" />
+                      Add Your First Node
+                    </Button>
+                  </div>
                 </div>
               )}
               
@@ -182,11 +207,20 @@ const Nodes = () => {
                             </div>
                           </div>
                           
-                          <div className="mt-4 pt-3 border-t border-dark-bg-light/30">
+                          <div className="mt-4 pt-3 border-t border-dark-bg-light/30 space-y-2">
                             <Button
                               variant="outline"
                               size="sm"
                               className="w-full border-dark-teal-600 text-dark-teal-400 hover:bg-dark-teal-800/20"
+                              onClick={() => handleManageApiKeys(node)}
+                            >
+                              <Key size={14} className="mr-2" />
+                              Manage API Keys
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
                               onClick={() => toast({ title: "Configuration", description: "Node configuration coming soon!" })}
                             >
                               <Settings size={14} className="mr-2" />
@@ -204,11 +238,29 @@ const Nodes = () => {
         </div>
       </div>
 
-      {/* Node Setup Dialog */}
+      {/* Dialogs */}
       <NodeSetupDialog
         isOpen={setupDialogOpen}
         onClose={() => setSetupDialogOpen(false)}
       />
+      
+      <AddNodeDialog
+        isOpen={addNodeDialogOpen}
+        onClose={() => setAddNodeDialogOpen(false)}
+        onNodeAdded={fetchNodes}
+      />
+
+      {selectedNode && (
+        <NodeApiKeysDialog
+          isOpen={apiKeysDialogOpen}
+          onClose={() => {
+            setApiKeysDialogOpen(false);
+            setSelectedNode(null);
+          }}
+          nodeId={selectedNode.id}
+          nodeName={selectedNode.name}
+        />
+      )}
     </SidebarProvider>
   );
 };
