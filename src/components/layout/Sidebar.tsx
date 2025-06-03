@@ -1,5 +1,4 @@
 
-import React, { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -7,75 +6,68 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  SidebarHeader,
 } from "@/components/ui/sidebar";
-import { 
-  Home, 
-  Server, 
-  Settings, 
-  LogOut
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Home, Database, Settings, Users, Activity, LogOut } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+
+const items = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: Home,
+  },
+  {
+    title: "Instance Pools",
+    url: "/instance-pools",
+    icon: Database,
+  },
+  {
+    title: "Nodes",
+    url: "/nodes",
+    icon: Activity,
+  },
+];
 
 export function AppSidebar() {
-  const [open, setOpen] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { logout } = useAuth();
-  const { toast } = useToast();
-  
-  const navigationItems = [
-    { title: "Dashboard", icon: Home, url: "/" },
-    { title: "Instance Pools", icon: Server, url: "/instance-pools" },
-    { title: "Settings", icon: Settings, url: "/settings" },
-  ];
 
   const handleLogout = () => {
     logout();
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
   };
 
   return (
-    <Sidebar className="border-r border-dark-bg-light/40 bg-sidebar/80 backdrop-blur-sm">
-      <SidebarHeader className="py-4">
-        <div className={cn("flex items-center gap-2 px-4", !open && "justify-center")}>
-          <div className="h-8 w-8 rounded-md bg-gradient-dark-teal flex items-center justify-center shadow-lg">
-            <Server size={20} className="text-white" />
+    <Sidebar>
+      <SidebarHeader className="border-b border-dark-bg-light/40 p-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded bg-gradient-dark-teal flex items-center justify-center shadow-md">
+            <Database size={16} className="text-white" />
           </div>
-          {open && (
-            <span className="font-bold text-lg text-white">
-              OracleOps<span className="text-dark-teal-400">.</span>
-            </span>
-          )}
+          <span className="font-semibold text-lg">OCI Manager</span>
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="teal-scrollbar">
+      <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider">
-            {open ? "Management" : ""}
-          </SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="hover:bg-dark-teal-800/20 data-[active]:bg-dark-teal-900/30 transition-all">
-                    <a href={item.url} className={cn(
-                      "flex items-center gap-3 rounded-md",
-                      location.pathname === item.url && "bg-dark-teal-900/30"
-                    )}>
-                      <item.icon size={20} className={cn(
-                        "text-muted-foreground", 
-                        location.pathname === item.url && "text-dark-teal-400"
-                      )} />
-                      {open && <span>{item.title}</span>}
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={location.pathname === item.url}
+                    className="data-[active=true]:bg-dark-teal-800/30 data-[active=true]:text-dark-teal-300 hover:bg-dark-bg-light/50"
+                  >
+                    <a href="#" onClick={(e) => { e.preventDefault(); navigate(item.url); }}>
+                      <item.icon />
+                      <span>{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -83,20 +75,34 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton className="hover:bg-dark-bg-light/50">
+                  <Settings />
+                  <span>Settings</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton className="hover:bg-dark-bg-light/50">
+                  <Users />
+                  <span>Users</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      
-      <SidebarFooter className="border-t border-dark-bg-light/40">
-        <SidebarMenu className="p-2">
+
+      <SidebarFooter className="border-t border-dark-bg-light/40 p-2">
+        <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton 
-              asChild 
-              className="hover:bg-dark-teal-800/20 transition-all cursor-pointer"
-              onClick={handleLogout}
-            >
-              <div className="flex items-center gap-3 rounded-md">
-                <LogOut size={20} className="text-muted-foreground" />
-                {open && <span>Log Out</span>}
-              </div>
+            <SidebarMenuButton onClick={handleLogout} className="hover:bg-dark-bg-light/50 text-muted-foreground hover:text-foreground">
+              <LogOut />
+              <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

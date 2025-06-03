@@ -48,7 +48,7 @@ export function DashboardHeader({
             onClick={() => setSetupDialogOpen(true)}
           >
             <Plus size={16} className="mr-2" />
-            New Instance Pool
+            Connect New Node
           </Button>
         </div>
       </div>
