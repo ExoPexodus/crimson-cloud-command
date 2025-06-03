@@ -29,14 +29,13 @@ class AutoscalerNode:
     def __init__(self):
         """Initialize the autoscaler node with backend integration."""
         self.backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-        self.node_id = int(os.getenv("NODE_ID", "1"))
         self.api_key = os.getenv("API_KEY", "")
         
         if not self.api_key:
             logging.warning("No API_KEY provided. Heartbeat service will be disabled.")
             self.heartbeat_service = None
         else:
-            self.heartbeat_service = HeartbeatService(self.backend_url, self.node_id, self.api_key)
+            self.heartbeat_service = HeartbeatService(self.backend_url, self.api_key)
         
         self.heartbeat_thread = None
         self.stop_heartbeat = threading.Event()
@@ -60,7 +59,7 @@ class AutoscalerNode:
                     # Check if configuration update is needed
                     if response.get('config_update_needed'):
                         logging.info("Configuration update detected")
-                        new_config = self.heartbeat_service.get_configuration()
+                        new_config = response.get('new_config')
                         if new_config:
                             self.update_configuration(new_config)
                     
@@ -78,7 +77,7 @@ class AutoscalerNode:
         self.heartbeat_thread.start()
         logging.info("Heartbeat service started")
 
-    def stop_heartbeat(self):
+    def stop_heartbeat_service(self):
         """Stop the heartbeat service."""
         if self.heartbeat_thread:
             self.stop_heartbeat.set()
@@ -274,12 +273,6 @@ def main():
     logging.debug(f"Loading configuration from: {config_path}")
     
     try:
-        # Try to get config from backend first
-        if autoscaler_node.heartbeat_service:
-            remote_config = autoscaler_node.heartbeat_service.get_configuration()
-            if remote_config:
-                autoscaler_node.update_configuration(remote_config)
-        
         config = load_yaml_config(config_path)
         
         # Calculate config hash
@@ -306,7 +299,7 @@ def main():
             logging.debug(f"Loaded pools from config: {config.get('pools')}")
     finally:
         # Stop heartbeat service on exit
-        autoscaler_node.stop_heartbeat()
+        autoscaler_node.stop_heartbeat_service()
 
 
 if __name__ == "__main__":

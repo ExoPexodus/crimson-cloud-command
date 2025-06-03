@@ -1,3 +1,4 @@
+
 version: "3.9"
 
 services:
@@ -6,8 +7,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: autoscaler
-    env_file:
-      - .env
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - API_KEY=${API_KEY}
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ./logs/autoscaling.log:/app/autoscaling.log

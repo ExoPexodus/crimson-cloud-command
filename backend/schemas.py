@@ -1,3 +1,4 @@
+
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -127,6 +128,8 @@ class HeartbeatResponse(BaseModel):
     current_config_hash: Optional[str] = None
     new_config: Optional[str] = None
 
+# ... keep existing code (Pool, Metric, Schedule, Auth schemas remain unchanged)
+
 # Pool schemas
 class PoolBase(BaseModel):
     name: str
@@ -212,19 +215,3 @@ class ScheduleResponse(ScheduleBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
-
-# Add API key schemas for node authentication
-class NodeApiKeyCreate(BaseModel):
-    name: str
-    node_id: int
-
-class NodeApiKeyResponse(BaseModel):
-    id: int
-    name: str
-    key: str
-    node_id: int
-    created_at: datetime
-    is_active: bool
-
-    class Config:
-        from_attributes = True
