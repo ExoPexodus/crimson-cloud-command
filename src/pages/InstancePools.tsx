@@ -1,117 +1,102 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InstancePoolCard } from "@/components/dashboard/InstancePoolCard";
-import { PoolConfigDialog } from "@/components/dashboard/PoolConfigDialog";
 import { Plus, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api";
+import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
 
-// Extended mock data for all instance pools
-const allInstancePools = [
-  {
-    id: "pool-1",
-    name: "Production API Pool",
-    instances: 4,
-    maxInstances: 8,
-    status: "healthy" as const,
-    region: "US West (Phoenix)",
-    cpuUsage: 62,
-    memoryUsage: 48,
-  },
-  {
-    id: "pool-2",
-    name: "ML Training Workers",
-    instances: 6,
-    maxInstances: 10,
-    status: "warning" as const,
-    region: "US East (Ashburn)",
-    cpuUsage: 78,
-    memoryUsage: 65,
-  },
-  {
-    id: "pool-3",
-    name: "Database Cluster",
-    instances: 3,
-    maxInstances: 5,
-    status: "healthy" as const,
-    region: "Europe (Frankfurt)",
-    cpuUsage: 45,
-    memoryUsage: 72,
-  },
-  {
-    id: "pool-4",
-    name: "Dev Environment",
-    instances: 1,
-    maxInstances: 3,
-    status: "inactive" as const,
-    region: "Asia Pacific (Tokyo)",
-    cpuUsage: 12,
-    memoryUsage: 25,
-  },
-  {
-    id: "pool-5",
-    name: "Test Environment",
-    instances: 2,
-    maxInstances: 4,
-    status: "healthy" as const,
-    region: "US Central (Dallas)",
-    cpuUsage: 35,
-    memoryUsage: 42,
-  },
-  {
-    id: "pool-6",
-    name: "Analytics Pool",
-    instances: 0,
-    maxInstances: 6,
-    status: "inactive" as const,
-    region: "Europe (London)",
-    cpuUsage: 0,
-    memoryUsage: 0,
-  }
-];
+interface Pool {
+  id: number;
+  name: string;
+  oracle_pool_id: string;
+  current_instances: number;
+  max_instances: number;
+  status: "healthy" | "warning" | "error" | "inactive";
+  node: {
+    region: string;
+  };
+}
+
+interface PoolAnalytics {
+  pool_id: number;
+  avg_cpu_utilization: number;
+  avg_memory_utilization: number;
+  timestamp: string;
+}
 
 const InstancePools = () => {
   const { toast } = useToast();
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [poolMetrics, setPoolMetrics] = useState<Record<number, { cpu: number; memory: number }>>({});
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [configDialog, setConfigDialog] = useState<{
-    isOpen: boolean;
-    poolName: string;
-    poolId: string;
-  }>({
-    isOpen: false,
-    poolName: "",
-    poolId: "",
-  });
+  const [setupDialogOpen, setSetupDialogOpen] = useState(false);
+
+  useEffect(() => {
+    fetchPoolsData();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPoolsData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchPoolsData = async () => {
+    try {
+      const poolsResponse = await apiClient.getPools();
+      if (poolsResponse.data) {
+        setPools(poolsResponse.data);
+        
+        // Fetch recent analytics for each pool
+        const analyticsResponse = await apiClient.getPoolAnalytics(undefined, 1);
+        if (analyticsResponse.data) {
+          const metrics: Record<number, { cpu: number; memory: number }> = {};
+          analyticsResponse.data.forEach((analytics: PoolAnalytics) => {
+            metrics[analytics.pool_id] = {
+              cpu: analytics.avg_cpu_utilization,
+              memory: analytics.avg_memory_utilization
+            };
+          });
+          setPoolMetrics(metrics);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching pools data:", error);
+      setPools([]);
+      setPoolMetrics({});
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
   
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
+    fetchPoolsData();
+  };
+
+  const handleCreatePool = () => {
+    setSetupDialogOpen(true);
+  };
+
+  const handleScaleAction = async (poolId: number, action: 'up' | 'down', poolName: string) => {
+    try {
       toast({
-        title: "Refreshed",
-        description: "Instance pools data has been updated",
+        title: `Scale ${action === 'up' ? 'Up' : 'Down'}`,
+        description: `Scaling ${action} ${poolName}`,
       });
-    }, 1500);
-  };
-
-  const handleConfigurePool = (poolName: string, poolId: string) => {
-    setConfigDialog({
-      isOpen: true,
-      poolName,
-      poolId,
-    });
-  };
-
-  const handleCloseConfigDialog = () => {
-    setConfigDialog({
-      isOpen: false,
-      poolName: "",
-      poolId: "",
-    });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to scale ${poolName}`,
+        variant: "destructive",
+      });
+    }
   };
   
   return (
@@ -138,55 +123,87 @@ const InstancePools = () => {
                     <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                     {refreshing ? 'Refreshing...' : 'Refresh'}
                   </Button>
-                  <Button className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white text-sm">
+                  <Button 
+                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white text-sm"
+                    onClick={handleCreatePool}
+                  >
                     <Plus size={16} className="mr-2" />
                     Create New Pool
                   </Button>
                 </div>
               </div>
               
+              {/* Loading State */}
+              {loading && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="h-64 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loading && pools.length === 0 && (
+                <div className="text-center py-12">
+                  <h3 className="text-lg font-medium mb-2">No Instance Pools Found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Connect your autoscaling nodes to start seeing pool data here.
+                  </p>
+                  <Button 
+                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
+                    onClick={handleCreatePool}
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Setup Your First Node
+                  </Button>
+                </div>
+              )}
+              
               {/* Instance Pools Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {allInstancePools.map((pool) => (
-                  <Card key={pool.id} className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
-                    <div className="p-4">
-                      <InstancePoolCard
-                        name={pool.name}
-                        instances={pool.instances}
-                        maxInstances={pool.maxInstances}
-                        status={pool.status}
-                        region={pool.region}
-                        cpuUsage={pool.cpuUsage}
-                        memoryUsage={pool.memoryUsage}
-                        onScaleUp={() => toast({ title: "Scale Up", description: `Scaling up ${pool.name}` })}
-                        onScaleDown={() => toast({ title: "Scale Down", description: `Scaling down ${pool.name}` })}
-                      />
-                      <div className="mt-3 pt-3 border-t border-dark-bg-light/30">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-dark-teal-600 text-dark-teal-400 hover:bg-dark-teal-800/20"
-                          onClick={() => handleConfigurePool(pool.name, pool.id)}
-                        >
-                          <Edit size={14} className="mr-2" />
-                          Configure Pool
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              {!loading && pools.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pools.map((pool) => {
+                    const metrics = poolMetrics[pool.id] || { cpu: 0, memory: 0 };
+                    return (
+                      <Card key={pool.id} className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
+                        <div className="p-4">
+                          <InstancePoolCard
+                            name={pool.name}
+                            instances={pool.current_instances}
+                            maxInstances={pool.max_instances}
+                            status={pool.status}
+                            region={pool.node?.region || "Unknown"}
+                            cpuUsage={Math.round(metrics.cpu)}
+                            memoryUsage={Math.round(metrics.memory)}
+                            onScaleUp={() => handleScaleAction(pool.id, 'up', pool.name)}
+                            onScaleDown={() => handleScaleAction(pool.id, 'down', pool.name)}
+                          />
+                          <div className="mt-3 pt-3 border-t border-dark-bg-light/30">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-dark-teal-600 text-dark-teal-400 hover:bg-dark-teal-800/20"
+                              onClick={() => toast({ title: "Configuration", description: "Pool configuration coming soon!" })}
+                            >
+                              <Edit size={14} className="mr-2" />
+                              Configure Pool
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Configuration Dialog */}
-      <PoolConfigDialog
-        isOpen={configDialog.isOpen}
-        onClose={handleCloseConfigDialog}
-        poolName={configDialog.poolName}
-        poolId={configDialog.poolId}
+      {/* Node Setup Dialog */}
+      <NodeSetupDialog
+        isOpen={setupDialogOpen}
+        onClose={() => setSetupDialogOpen(false)}
       />
     </SidebarProvider>
   );
