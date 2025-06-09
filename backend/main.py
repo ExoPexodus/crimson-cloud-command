@@ -24,28 +24,35 @@ from services import (
     NodeConfigurationService, HeartbeatService, AnalyticsService
 )
 from seed_data import create_default_admin
+from migration_manager import initialize_database
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
-# Seed initial data
-logger.info("Running database seeding...")
-db = SessionLocal()
-try:
-    create_default_admin(db)
-finally:
-    db.close()
+# Initialize database and run migrations
+logger.info("Initializing database...")
+if initialize_database():
+    logger.info("Database initialization completed successfully")
+    
+    # Seed initial data
+    logger.info("Running database seeding...")
+    db = SessionLocal()
+    try:
+        create_default_admin(db)
+    finally:
+        db.close()
+else:
+    logger.error("Database initialization failed")
 
 app = FastAPI(
     title="Oracle Cloud Autoscaling Management API",
     description="Central management system for Oracle Cloud instance pool autoscaling",
     version="1.0.0"
 )
+
+# ... keep existing code (CORS middleware, security, and all endpoints remain unchanged)
 
 # CORS middleware
 app.add_middleware(
@@ -147,8 +154,6 @@ async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db:
         query = query.filter(PoolAnalytics.node_id == node_id)
     
     return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
-
-# ... keep existing code (Pool, Metrics, Schedule endpoints remain unchanged)
 
 # Pool management endpoints
 @app.get("/pools", response_model=List[PoolResponse])
