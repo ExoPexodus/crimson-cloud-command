@@ -30,9 +30,25 @@ def reset_database():
         logger.error(f"Error resetting database: {str(e)}")
         return False
 
+def create_tables_directly():
+    """Create tables directly using SQLAlchemy metadata"""
+    try:
+        engine = create_engine(DATABASE_URL)
+        Base.metadata.create_all(bind=engine)
+        logger.info("All tables created successfully using SQLAlchemy")
+        return True
+    except Exception as e:
+        logger.error(f"Error creating tables directly: {str(e)}")
+        return False
+
 def run_migrations():
     """Run database migrations"""
     try:
+        # Check if alembic.ini exists
+        if not os.path.exists("alembic.ini"):
+            logger.error("alembic.ini not found")
+            return False
+            
         # Create alembic config
         alembic_cfg = Config("alembic.ini")
         
@@ -40,30 +56,22 @@ def run_migrations():
         logger.info("Running database migrations...")
         command.upgrade(alembic_cfg, "head")
         logger.info("Database migrations completed successfully")
+        return True
         
     except Exception as e:
         logger.error(f"Error running migrations: {str(e)}")
-        raise
+        return False
 
-def create_initial_migration():
-    """Create initial migration if it doesn't exist"""
+def stamp_database():
+    """Stamp the database with the current migration version"""
     try:
         alembic_cfg = Config("alembic.ini")
-        
-        # Check if migrations directory exists
-        versions_dir = "alembic/versions"
-        if not os.path.exists(versions_dir):
-            os.makedirs(versions_dir)
-        
-        # Check if there are any migration files
-        migration_files = [f for f in os.listdir(versions_dir) if f.endswith('.py') and not f.startswith('__')]
-        
-        if not migration_files:
-            logger.info("No migration files found, but we have a pre-created initial migration")
-        
+        command.stamp(alembic_cfg, "head")
+        logger.info("Database stamped successfully")
+        return True
     except Exception as e:
-        logger.error(f"Error checking initial migration: {str(e)}")
-        raise
+        logger.error(f"Error stamping database: {str(e)}")
+        return False
 
 def check_database_schema():
     """Check if database schema matches our models"""
@@ -87,13 +95,6 @@ def check_database_schema():
             logger.warning(f"Missing tables: {missing_tables}")
             return False
         
-        # Check if pools table has region column (common issue)
-        if 'pools' in tables:
-            pool_columns = [col['name'] for col in inspector.get_columns('pools')]
-            if 'region' not in pool_columns:
-                logger.warning("Pools table missing region column")
-                return False
-        
         logger.info("Database schema appears to be correct")
         return True
         
@@ -116,20 +117,30 @@ def initialize_database(reset_if_needed=False):
         # Check if we need to reset the database
         if reset_if_needed or not check_database_schema():
             logger.info("Database schema issues detected, performing reset...")
+            
+            # Reset database completely
             reset_database()
+            
+            # Try creating tables directly first
+            if create_tables_directly():
+                logger.info("Tables created directly, stamping with migration version...")
+                stamp_database()
+            else:
+                # Fallback to migrations
+                logger.info("Direct table creation failed, trying migrations...")
+                if not run_migrations():
+                    logger.error("Migration failed, creating tables directly as fallback...")
+                    create_tables_directly()
+                    stamp_database()
+        else:
+            logger.info("Database schema is correct, skipping reset")
         
-        # Create initial migration check
-        create_initial_migration()
-        
-        # Run migrations
-        run_migrations()
-        
-        # Verify schema after migration
+        # Final verification
         if check_database_schema():
             logger.info("Database initialization completed successfully")
             return True
         else:
-            logger.error("Database schema still has issues after migration")
+            logger.error("Database schema still has issues after initialization")
             return False
         
     except Exception as e:
