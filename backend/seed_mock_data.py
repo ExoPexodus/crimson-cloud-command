@@ -23,40 +23,31 @@ def create_mock_data():
         db.query(Node).delete()
         db.commit()
         
-        # Create mock nodes
+        # Create mock nodes - using only valid Node model fields
         nodes_data = [
             {
                 "name": "Oracle-US-West-Node",
                 "region": "us-phoenix-1",
                 "ip_address": "10.0.1.100",
-                "port": 8080,
-                "api_key": "oci_key_us_west_12345",
+                "description": "Primary Oracle node in US West region",
                 "status": NodeStatus.ACTIVE,
-                "last_heartbeat": datetime.utcnow(),
-                "version": "1.2.3",
-                "node_metadata": '{"zone": "AD-1", "shape": "VM.Standard2.1"}'
+                "last_heartbeat": datetime.utcnow()
             },
             {
-                "name": "Oracle-US-East-Node",
+                "name": "Oracle-US-East-Node", 
                 "region": "us-ashburn-1",
                 "ip_address": "10.0.2.100",
-                "port": 8080,
-                "api_key": "oci_key_us_east_67890",
+                "description": "Primary Oracle node in US East region",
                 "status": NodeStatus.ACTIVE,
-                "last_heartbeat": datetime.utcnow(),
-                "version": "1.2.3",
-                "node_metadata": '{"zone": "AD-2", "shape": "VM.Standard2.2"}'
+                "last_heartbeat": datetime.utcnow()
             },
             {
                 "name": "Oracle-EU-Node",
-                "region": "eu-frankfurt-1",
+                "region": "eu-frankfurt-1", 
                 "ip_address": "10.0.3.100",
-                "port": 8080,
-                "api_key": "oci_key_eu_central_11111",
+                "description": "Primary Oracle node in EU region",
                 "status": NodeStatus.ACTIVE,
-                "last_heartbeat": datetime.utcnow(),
-                "version": "1.2.3",
-                "node_metadata": '{"zone": "AD-1", "shape": "VM.Standard2.1"}'
+                "last_heartbeat": datetime.utcnow()
             }
         ]
         
@@ -69,97 +60,67 @@ def create_mock_data():
         db.commit()
         logger.info(f"Created {len(created_nodes)} nodes")
         
-        # Create mock pools
+        # Create mock pools - using only valid Pool model fields
         pools_data = [
             {
                 "name": "Production API Pool",
                 "oracle_pool_id": "ocid1.instancepool.oc1.phx.prod001",
-                "compartment_id": "ocid1.compartment.oc1..prod",
                 "node_id": created_nodes[0].id,
+                "region": "us-phoenix-1",
                 "current_instances": 4,
                 "min_instances": 2,
                 "max_instances": 8,
-                "target_instances": 4,
-                "status": PoolStatus.HEALTHY,
-                "cpu_threshold_scale_up": 75.0,
-                "cpu_threshold_scale_down": 25.0,
-                "memory_threshold_scale_up": 80.0,
-                "memory_threshold_scale_down": 30.0,
+                "status": PoolStatus.HEALTHY
             },
             {
                 "name": "ML Training Workers",
-                "oracle_pool_id": "ocid1.instancepool.oc1.iad.ml001",
-                "compartment_id": "ocid1.compartment.oc1..ml",
+                "oracle_pool_id": "ocid1.instancepool.oc1.iad.ml001", 
                 "node_id": created_nodes[1].id,
+                "region": "us-ashburn-1",
                 "current_instances": 6,
                 "min_instances": 2,
                 "max_instances": 10,
-                "target_instances": 6,
-                "status": PoolStatus.WARNING,
-                "cpu_threshold_scale_up": 70.0,
-                "cpu_threshold_scale_down": 20.0,
-                "memory_threshold_scale_up": 85.0,
-                "memory_threshold_scale_down": 35.0,
+                "status": PoolStatus.WARNING
             },
             {
                 "name": "Database Cluster",
                 "oracle_pool_id": "ocid1.instancepool.oc1.fra.db001",
-                "compartment_id": "ocid1.compartment.oc1..db",
                 "node_id": created_nodes[2].id,
+                "region": "eu-frankfurt-1",
                 "current_instances": 3,
                 "min_instances": 3,
                 "max_instances": 5,
-                "target_instances": 3,
-                "status": PoolStatus.HEALTHY,
-                "cpu_threshold_scale_up": 80.0,
-                "cpu_threshold_scale_down": 30.0,
-                "memory_threshold_scale_up": 90.0,
-                "memory_threshold_scale_down": 40.0,
+                "status": PoolStatus.HEALTHY
             },
             {
-                "name": "Dev Environment",
+                "name": "Dev Environment", 
                 "oracle_pool_id": "ocid1.instancepool.oc1.phx.dev001",
-                "compartment_id": "ocid1.compartment.oc1..dev",
                 "node_id": created_nodes[0].id,
+                "region": "us-phoenix-1",
                 "current_instances": 1,
                 "min_instances": 0,
                 "max_instances": 3,
-                "target_instances": 1,
-                "status": PoolStatus.INACTIVE,
-                "cpu_threshold_scale_up": 70.0,
-                "cpu_threshold_scale_down": 20.0,
-                "memory_threshold_scale_up": 75.0,
-                "memory_threshold_scale_down": 25.0,
+                "status": PoolStatus.HEALTHY
             },
             {
                 "name": "Test Environment",
                 "oracle_pool_id": "ocid1.instancepool.oc1.iad.test001",
-                "compartment_id": "ocid1.compartment.oc1..test",
                 "node_id": created_nodes[1].id,
+                "region": "us-ashburn-1", 
                 "current_instances": 2,
                 "min_instances": 1,
                 "max_instances": 4,
-                "target_instances": 2,
-                "status": PoolStatus.HEALTHY,
-                "cpu_threshold_scale_up": 65.0,
-                "cpu_threshold_scale_down": 25.0,
-                "memory_threshold_scale_up": 70.0,
-                "memory_threshold_scale_down": 30.0,
+                "status": PoolStatus.HEALTHY
             },
             {
                 "name": "Analytics Pool",
                 "oracle_pool_id": "ocid1.instancepool.oc1.fra.analytics001",
-                "compartment_id": "ocid1.compartment.oc1..analytics",
                 "node_id": created_nodes[2].id,
+                "region": "eu-frankfurt-1",
                 "current_instances": 0,
                 "min_instances": 0,
                 "max_instances": 6,
-                "target_instances": 0,
-                "status": PoolStatus.INACTIVE,
-                "cpu_threshold_scale_up": 60.0,
-                "cpu_threshold_scale_down": 20.0,
-                "memory_threshold_scale_up": 70.0,
-                "memory_threshold_scale_down": 25.0,
+                "status": PoolStatus.HEALTHY
             }
         ]
         
@@ -172,7 +133,7 @@ def create_mock_data():
         db.commit()
         logger.info(f"Created {len(created_pools)} pools")
         
-        # Create mock metrics for the last 24 hours
+        # Create mock metrics for the last 24 hours - using only valid Metric model fields
         base_time = datetime.utcnow() - timedelta(hours=24)
         
         for i in range(24):  # 24 hours of data
@@ -183,10 +144,8 @@ def create_mock_data():
                 cpu_metric = Metric(
                     node_id=node.id,
                     metric_type="cpu",
-                    metric_source="oci",
                     value=random.uniform(10, 90),
                     unit="percent",
-                    region=node.region,
                     timestamp=timestamp
                 )
                 db.add(cpu_metric)
@@ -194,11 +153,9 @@ def create_mock_data():
                 # Memory metrics
                 memory_metric = Metric(
                     node_id=node.id,
-                    metric_type="memory",
-                    metric_source="oci",
+                    metric_type="memory", 
                     value=random.uniform(20, 85),
                     unit="percent",
-                    region=node.region,
                     timestamp=timestamp
                 )
                 db.add(memory_metric)
@@ -211,12 +168,10 @@ def create_mock_data():
                 # Instance count metrics
                 instance_metric = Metric(
                     node_id=pool.node_id,
+                    pool_id=pool.id,
                     metric_type="instances",
-                    metric_source="oci",
                     value=pool.current_instances + random.randint(-1, 2),
                     unit="count",
-                    pool_id=pool.oracle_pool_id,
-                    region=pool.node.region,
                     timestamp=timestamp
                 )
                 db.add(instance_metric)
@@ -224,31 +179,31 @@ def create_mock_data():
         db.commit()
         logger.info("Created metrics for the last 24 hours")
         
-        # Create some schedules
+        # Create some schedules - using only valid Schedule model fields  
         schedules_data = [
             {
-                "pool_id": created_pools[0].id,
+                "node_id": created_nodes[0].id,
                 "name": "Morning Scale Up",
-                "cron_expression": "0 8 * * 1-5",
+                "start_time": "08:00",
+                "end_time": "18:00", 
                 "target_instances": 6,
-                "is_active": True,
-                "description": "Scale up for morning traffic"
+                "is_active": True
             },
             {
-                "pool_id": created_pools[0].id,
+                "node_id": created_nodes[0].id,
                 "name": "Evening Scale Down",
-                "cron_expression": "0 18 * * 1-5",
+                "start_time": "18:00",
+                "end_time": "08:00",
                 "target_instances": 2,
-                "is_active": True,
-                "description": "Scale down after business hours"
+                "is_active": True
             },
             {
-                "pool_id": created_pools[1].id,
+                "node_id": created_nodes[1].id,
                 "name": "Weekend ML Training",
-                "cron_expression": "0 2 * * 6-7",
+                "start_time": "02:00", 
+                "end_time": "10:00",
                 "target_instances": 8,
-                "is_active": True,
-                "description": "Scale up for weekend ML training jobs"
+                "is_active": True
             }
         ]
         
@@ -264,6 +219,7 @@ def create_mock_data():
     except Exception as e:
         logger.error(f"Error creating mock data: {str(e)}")
         db.rollback()
+        raise
     finally:
         db.close()
 
