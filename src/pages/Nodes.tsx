@@ -5,10 +5,11 @@ import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, RefreshCw, Settings, Activity } from "lucide-react";
+import { Plus, RefreshCw, Settings, Activity, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
+import { NodeConfigDialog } from "@/components/dashboard/NodeConfigDialog";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
 
 interface Node {
@@ -18,6 +19,7 @@ interface Node {
   status: "active" | "inactive" | "error";
   last_heartbeat?: string;
   created_at: string;
+  api_key_hash?: string;
 }
 
 const Nodes = () => {
@@ -26,6 +28,8 @@ const Nodes = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   useEffect(() => {
     fetchNodes();
@@ -57,6 +61,15 @@ const Nodes = () => {
 
   const handleCreateNode = () => {
     setSetupDialogOpen(true);
+  };
+
+  const handleConfigureNode = (node: Node) => {
+    setSelectedNode(node);
+    setConfigDialogOpen(true);
+  };
+
+  const handleNodeDeleted = () => {
+    fetchNodes(); // Refresh the list
   };
 
   const getNodeStatus = (node: Node): "healthy" | "warning" | "error" | "inactive" => {
@@ -187,7 +200,7 @@ const Nodes = () => {
                               variant="outline"
                               size="sm"
                               className="w-full border-dark-teal-600 text-dark-teal-400 hover:bg-dark-teal-800/20"
-                              onClick={() => toast({ title: "Configuration", description: "Node configuration coming soon!" })}
+                              onClick={() => handleConfigureNode(node)}
                             >
                               <Settings size={14} className="mr-2" />
                               Configure Node
@@ -204,10 +217,18 @@ const Nodes = () => {
         </div>
       </div>
 
-      {/* Node Setup Dialog */}
+      {/* Dialogs */}
       <NodeSetupDialog
         isOpen={setupDialogOpen}
         onClose={() => setSetupDialogOpen(false)}
+        onNodeRegistered={fetchNodes}
+      />
+
+      <NodeConfigDialog
+        isOpen={configDialogOpen}
+        onClose={() => setConfigDialogOpen(false)}
+        node={selectedNode}
+        onNodeDeleted={handleNodeDeleted}
       />
     </SidebarProvider>
   );

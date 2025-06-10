@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Dialog,
@@ -12,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Copy, CheckCircle, Loader2 } from "lucide-react";
+import { Copy, CheckCircle, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 
@@ -131,7 +130,7 @@ pools:
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={step === "form" ? handleClose : undefined}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -147,7 +146,7 @@ pools:
           <DialogDescription>
             {step === "form" 
               ? "Enter the details for your new autoscaling node"
-              : "Your node has been registered. Save these credentials securely."
+              : "Your node has been registered. Save these credentials securely - you won't see the API key again unless you configure the node."
             }
           </DialogDescription>
         </DialogHeader>
@@ -212,6 +211,19 @@ pools:
 
         {step === "success" && registrationResult && (
           <div className="space-y-4">
+            <Card className="p-4 glass-card border-yellow-600/50 bg-yellow-500/10">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-yellow-600">Important Security Notice</p>
+                  <p className="text-sm text-yellow-600/80">
+                    This API key will only be shown once. Make sure to copy and save it securely. 
+                    You can view it again later by configuring the node.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
             <Card className="p-4 glass-card border-dark-teal-600/30">
               <h3 className="font-semibold mb-3 text-dark-teal-400">Node Credentials</h3>
               <div className="space-y-3">
@@ -265,7 +277,7 @@ pools:
 
             <div className="flex justify-end gap-2 pt-4">
               <Button onClick={handleClose} className="bg-dark-teal-600 hover:bg-dark-teal-700">
-                Done
+                Done - I've Saved the Credentials
               </Button>
             </div>
           </div>
