@@ -75,6 +75,28 @@ def fix_pools_table_schema(engine):
         logger.error(f"Error fixing pools table schema: {str(e)}")
         raise
 
+def initialize_alembic():
+    """Initialize Alembic if not already initialized"""
+    try:
+        alembic_cfg = Config("alembic.ini")
+        
+        # Check if alembic is initialized
+        if not os.path.exists("alembic/versions"):
+            logger.info("Initializing Alembic...")
+            command.init(alembic_cfg, "alembic")
+            logger.info("Alembic initialized successfully")
+            
+        # Stamp the database with the current revision if no version exists
+        try:
+            command.current(alembic_cfg)
+        except Exception:
+            logger.info("Stamping database with head revision...")
+            command.stamp(alembic_cfg, "head")
+            
+    except Exception as e:
+        logger.error(f"Error initializing Alembic: {str(e)}")
+        # Don't raise here, continue with manual schema fixes
+
 def initialize_database():
     """Initialize database with tables and run migrations"""
     try:
@@ -91,8 +113,11 @@ def initialize_database():
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
         
-        # Fix schema issues
+        # Fix schema issues first (fallback)
         fix_pools_table_schema(engine)
+        
+        # Initialize Alembic if needed
+        initialize_alembic()
         
         # Create initial migration if needed
         create_initial_migration()
