@@ -1,4 +1,3 @@
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
@@ -76,19 +75,16 @@ class ApiClient {
     };
 
     try {
-      console.log(`Making request to: ${url}`, config);
       const response = await fetch(url, config);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`HTTP ${response.status} error:`, errorText);
         return { error: `HTTP ${response.status}: ${errorText}` };
       }
 
       const data = await response.json();
       return { data };
     } catch (error) {
-      console.error('Request failed:', error);
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

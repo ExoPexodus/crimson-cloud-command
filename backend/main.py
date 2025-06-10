@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
 import logging
-import os
 
 from database import engine, get_db, SessionLocal
 import models
@@ -30,6 +29,8 @@ from auth_middleware import get_node_from_api_key
 from seed_data import create_default_admin
 from migration_manager import initialize_database
 
+# ... keep existing code (logging configuration, database initialization, and app setup remain unchanged)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -48,7 +49,7 @@ if initialize_database():
     finally:
         db.close()
 else:
-    logger.error("Database initialization failed - continuing with limited functionality")
+    logger.error("Database initialization failed")
 
 app = FastAPI(
     title="Oracle Cloud Autoscaling Management API",
@@ -56,15 +57,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Updated CORS middleware to include both development ports
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:5173", 
-        "http://127.0.0.1:3000", 
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,108 +75,62 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 # Authentication endpoints
 @app.post("/auth/register", response_model=UserResponse)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
-    try:
-        return UserService.create_user(db, user)
-    except Exception as e:
-        logger.error(f"Error registering user: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+    return UserService.create_user(db, user)
 
 @app.post("/auth/login", response_model=Token)
 async def login(email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    try:
-        user = AuthService.authenticate_user(db, email, password)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password"
-            )
-        access_token = AuthService.create_access_token(data={"sub": user.email})
-        return {"access_token": access_token, "token_type": "bearer"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error during login: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+    user = AuthService.authenticate_user(db, email, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    access_token = AuthService.create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # Node registration endpoint (for autoscaling nodes)
 @app.post("/nodes/register", response_model=NodeRegisterResponse)
 async def register_node(node: NodeRegister, db: Session = Depends(get_db)):
     """Register a new autoscaling node and generate API key"""
-    try:
-        return NodeService.register_node(db, node)
-    except Exception as e:
-        logger.error(f"Error registering node: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+    return NodeService.register_node(db, node)
 
 # Node management endpoints
 @app.get("/nodes", response_model=List[NodeResponse])
 async def get_nodes(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return NodeService.get_nodes(db)
-    except Exception as e:
-        logger.error(f"Error getting nodes: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get nodes: {str(e)}")
+    return NodeService.get_nodes(db)
 
 @app.post("/nodes", response_model=NodeResponse)
 async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return NodeService.create_node(db, node)
-    except Exception as e:
-        logger.error(f"Error creating node: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create node: {str(e)}")
+    return NodeService.create_node(db, node)
 
 @app.get("/nodes/{node_id}", response_model=NodeResponse)
 async def get_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        node = NodeService.get_node(db, node_id)
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        return node
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting node {node_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get node: {str(e)}")
+    node = NodeService.get_node(db, node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return node
 
 @app.put("/nodes/{node_id}", response_model=NodeResponse)
 async def update_node(node_id: int, node: NodeUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return NodeService.update_node(db, node_id, node)
-    except Exception as e:
-        logger.error(f"Error updating node {node_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update node: {str(e)}")
+    return NodeService.update_node(db, node_id, node)
 
 @app.delete("/nodes/{node_id}")
 async def delete_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return NodeService.delete_node(db, node_id)
-    except Exception as e:
-        logger.error(f"Error deleting node {node_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete node: {str(e)}")
+    return NodeService.delete_node(db, node_id)
 
 # Node Configuration endpoints
 @app.get("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
 async def get_node_config(node_id: int, db: Session = Depends(get_db)):
     """Get current configuration for a node - used by autoscaling nodes"""
-    try:
-        config = NodeConfigurationService.get_node_config(db, node_id)
-        if not config:
-            raise HTTPException(status_code=404, detail="Configuration not found")
-        return config
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting node config for {node_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get configuration: {str(e)}")
+    config = NodeConfigurationService.get_node_config(db, node_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return config
 
 @app.put("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
 async def update_node_config(node_id: int, config: NodeConfigurationCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Update node configuration - used by central management UI"""
-    try:
-        return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
-    except Exception as e:
-        logger.error(f"Error updating node config for {node_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update configuration: {str(e)}")
+    return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
 
 # Heartbeat endpoint for autoscaling nodes (with API key auth)
 @app.post("/nodes/{node_id}/heartbeat", response_model=HeartbeatResponse)
@@ -193,138 +143,81 @@ async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, node: 
             
         response = HeartbeatService.process_heartbeat(db, node_id, heartbeat_data)
         return HeartbeatResponse(**response)
-    except HTTPException:
-        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error processing heartbeat for node {node_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Analytics endpoints
 @app.get("/analytics/system", response_model=SystemAnalyticsResponse)
 async def get_system_analytics(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get system-wide analytics and metrics"""
-    try:
-        return AnalyticsService.get_system_analytics(db)
-    except Exception as e:
-        logger.error(f"Error getting system analytics: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+    return AnalyticsService.get_system_analytics(db)
 
 @app.get("/analytics/pools", response_model=List[PoolAnalyticsResponse])
 async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get pool analytics for the specified time period"""
-    try:
-        from datetime import datetime, timedelta
-        from models import PoolAnalytics
-        
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        query = db.query(PoolAnalytics).filter(PoolAnalytics.timestamp >= cutoff_time)
-        
-        if node_id:
-            query = query.filter(PoolAnalytics.node_id == node_id)
-        
-        return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
-    except Exception as e:
-        logger.error(f"Error getting pool analytics: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get pool analytics: {str(e)}")
+    from datetime import datetime, timedelta
+    from models import PoolAnalytics
+    
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    query = db.query(PoolAnalytics).filter(PoolAnalytics.timestamp >= cutoff_time)
+    
+    if node_id:
+        query = query.filter(PoolAnalytics.node_id == node_id)
+    
+    return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
 
 # Pool management endpoints
 @app.get("/pools", response_model=List[PoolResponse])
 async def get_pools(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return PoolService.get_pools(db)
-    except Exception as e:
-        logger.error(f"Error getting pools: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get pools: {str(e)}")
+    return PoolService.get_pools(db)
 
 @app.post("/pools", response_model=PoolResponse)
 async def create_pool(pool: PoolCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return PoolService.create_pool(db, pool)
-    except Exception as e:
-        logger.error(f"Error creating pool: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create pool: {str(e)}")
+    return PoolService.create_pool(db, pool)
 
 @app.get("/pools/{pool_id}", response_model=PoolResponse)
 async def get_pool(pool_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        pool = PoolService.get_pool(db, pool_id)
-        if not pool:
-            raise HTTPException(status_code=404, detail="Pool not found")
-        return pool
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting pool {pool_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get pool: {str(e)}")
+    pool = PoolService.get_pool(db, pool_id)
+    if not pool:
+        raise HTTPException(status_code=404, detail="Pool not found")
+    return pool
 
 @app.put("/pools/{pool_id}", response_model=PoolResponse)
 async def update_pool(pool_id: int, pool: PoolUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return PoolService.update_pool(db, pool_id, pool)
-    except Exception as e:
-        logger.error(f"Error updating pool {pool_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update pool: {str(e)}")
+    return PoolService.update_pool(db, pool_id, pool)
 
 @app.delete("/pools/{pool_id}")
 async def delete_pool(pool_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return PoolService.delete_pool(db, pool_id)
-    except Exception as e:
-        logger.error(f"Error deleting pool {pool_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete pool: {str(e)}")
+    return PoolService.delete_pool(db, pool_id)
 
 # Metrics endpoints
 @app.get("/metrics", response_model=List[MetricResponse])
 async def get_metrics(node_id: Optional[int] = None, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return MetricService.get_metrics(db, node_id)
-    except Exception as e:
-        logger.error(f"Error getting metrics: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+    return MetricService.get_metrics(db, node_id)
 
 @app.post("/metrics", response_model=MetricResponse)
 async def create_metric(metric: MetricCreate, db: Session = Depends(get_db)):
     # This endpoint doesn't require authentication as it's used by nodes
-    try:
-        return MetricService.create_metric(db, metric)
-    except Exception as e:
-        logger.error(f"Error creating metric: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create metric: {str(e)}")
+    return MetricService.create_metric(db, metric)
 
 # Schedule endpoints
 @app.get("/schedules", response_model=List[ScheduleResponse])
 async def get_schedules(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return ScheduleService.get_schedules(db)
-    except Exception as e:
-        logger.error(f"Error getting schedules: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get schedules: {str(e)}")
+    return ScheduleService.get_schedules(db)
 
 @app.post("/schedules", response_model=ScheduleResponse)
 async def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return ScheduleService.create_schedule(db, schedule)
-    except Exception as e:
-        logger.error(f"Error creating schedule: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create schedule: {str(e)}")
+    return ScheduleService.create_schedule(db, schedule)
 
 @app.put("/schedules/{schedule_id}", response_model=ScheduleResponse)
 async def update_schedule(schedule_id: int, schedule: ScheduleCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return ScheduleService.update_schedule(db, schedule_id, schedule)
-    except Exception as e:
-        logger.error(f"Error updating schedule {schedule_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update schedule: {str(e)}")
+    return ScheduleService.update_schedule(db, schedule_id, schedule)
 
 @app.delete("/schedules/{schedule_id}")
 async def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    try:
-        return ScheduleService.delete_schedule(db, schedule_id)
-    except Exception as e:
-        logger.error(f"Error deleting schedule {schedule_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete schedule: {str(e)}")
+    return ScheduleService.delete_schedule(db, schedule_id)
 
 # Health check
 @app.get("/health")
