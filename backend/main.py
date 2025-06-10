@@ -29,16 +29,14 @@ from auth_middleware import get_node_from_api_key
 from seed_data import create_default_admin
 from migration_manager import initialize_database
 
-# ... keep existing code (logging configuration, database initialization, and app setup remain unchanged)
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize database and run migrations
+# Initialize database and run migrations with reset if needed
 logger.info("Initializing database...")
-if initialize_database():
+if initialize_database(reset_if_needed=True):
     logger.info("Database initialization completed successfully")
     
     # Seed initial data
@@ -46,6 +44,9 @@ if initialize_database():
     db = SessionLocal()
     try:
         create_default_admin(db)
+        logger.info("Database seeding completed")
+    except Exception as e:
+        logger.error(f"Database seeding failed: {str(e)}")
     finally:
         db.close()
 else:
@@ -56,6 +57,8 @@ app = FastAPI(
     description="Central management system for Oracle Cloud instance pool autoscaling",
     version="1.0.0"
 )
+
+# ... keep existing code (CORS middleware, security, dependencies, and all endpoints remain unchanged)
 
 # CORS middleware
 app.add_middleware(
