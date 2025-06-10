@@ -29,8 +29,6 @@ from auth_middleware import get_node_from_api_key
 from seed_data import create_default_admin
 from migration_manager import initialize_database
 
-# ... keep existing code (logging configuration, database initialization, and app setup remain unchanged)
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -57,10 +55,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
+# Updated CORS middleware to include port 3000
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,16 +90,28 @@ async def login(email: str = Form(...), password: str = Form(...), db: Session =
 @app.post("/nodes/register", response_model=NodeRegisterResponse)
 async def register_node(node: NodeRegister, db: Session = Depends(get_db)):
     """Register a new autoscaling node and generate API key"""
-    return NodeService.register_node(db, node)
+    try:
+        return NodeService.register_node(db, node)
+    except Exception as e:
+        logger.error(f"Error registering node: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 # Node management endpoints
 @app.get("/nodes", response_model=List[NodeResponse])
 async def get_nodes(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    return NodeService.get_nodes(db)
+    try:
+        return NodeService.get_nodes(db)
+    except Exception as e:
+        logger.error(f"Error getting nodes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get nodes: {str(e)}")
 
 @app.post("/nodes", response_model=NodeResponse)
 async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    return NodeService.create_node(db, node)
+    try:
+        return NodeService.create_node(db, node)
+    except Exception as e:
+        logger.error(f"Error creating node: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create node: {str(e)}")
 
 @app.get("/nodes/{node_id}", response_model=NodeResponse)
 async def get_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
@@ -152,26 +162,38 @@ async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, node: 
 @app.get("/analytics/system", response_model=SystemAnalyticsResponse)
 async def get_system_analytics(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get system-wide analytics and metrics"""
-    return AnalyticsService.get_system_analytics(db)
+    try:
+        return AnalyticsService.get_system_analytics(db)
+    except Exception as e:
+        logger.error(f"Error getting system analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
 
 @app.get("/analytics/pools", response_model=List[PoolAnalyticsResponse])
 async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get pool analytics for the specified time period"""
-    from datetime import datetime, timedelta
-    from models import PoolAnalytics
-    
-    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-    query = db.query(PoolAnalytics).filter(PoolAnalytics.timestamp >= cutoff_time)
-    
-    if node_id:
-        query = query.filter(PoolAnalytics.node_id == node_id)
-    
-    return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
+    try:
+        from datetime import datetime, timedelta
+        from models import PoolAnalytics
+        
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        query = db.query(PoolAnalytics).filter(PoolAnalytics.timestamp >= cutoff_time)
+        
+        if node_id:
+            query = query.filter(PoolAnalytics.node_id == node_id)
+        
+        return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
+    except Exception as e:
+        logger.error(f"Error getting pool analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get pool analytics: {str(e)}")
 
 # Pool management endpoints
 @app.get("/pools", response_model=List[PoolResponse])
 async def get_pools(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    return PoolService.get_pools(db)
+    try:
+        return PoolService.get_pools(db)
+    except Exception as e:
+        logger.error(f"Error getting pools: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get pools: {str(e)}")
 
 @app.post("/pools", response_model=PoolResponse)
 async def create_pool(pool: PoolCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
