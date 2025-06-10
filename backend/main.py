@@ -8,6 +8,7 @@ import uvicorn
 import logging
 
 from database import engine, get_db, SessionLocal
+import models
 from models import Base
 from schemas import (
     NodeCreate, NodeResponse, NodeUpdate, NodeConfigurationCreate, NodeConfigurationResponse,
@@ -16,15 +17,19 @@ from schemas import (
     ScheduleCreate, ScheduleResponse,
     UserCreate, UserResponse,
     Token, NodeHeartbeatData, HeartbeatResponse,
-    SystemAnalyticsResponse, PoolAnalyticsResponse
+    SystemAnalyticsResponse, PoolAnalyticsResponse,
+    NodeRegister, NodeRegisterResponse
 )
 from services import (
     NodeService, PoolService, MetricService, 
     ScheduleService, UserService, AuthService,
     NodeConfigurationService, HeartbeatService, AnalyticsService
 )
+from auth_middleware import get_node_from_api_key
 from seed_data import create_default_admin
 from migration_manager import initialize_database
+
+# ... keep existing code (logging configuration, database initialization, and app setup remain unchanged)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -51,8 +56,6 @@ app = FastAPI(
     description="Central management system for Oracle Cloud instance pool autoscaling",
     version="1.0.0"
 )
-
-# ... keep existing code (CORS middleware, security, and all endpoints remain unchanged)
 
 # CORS middleware
 app.add_middleware(
@@ -84,6 +87,12 @@ async def login(email: str = Form(...), password: str = Form(...), db: Session =
         )
     access_token = AuthService.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+# Node registration endpoint (for autoscaling nodes)
+@app.post("/nodes/register", response_model=NodeRegisterResponse)
+async def register_node(node: NodeRegister, db: Session = Depends(get_db)):
+    """Register a new autoscaling node and generate API key"""
+    return NodeService.register_node(db, node)
 
 # Node management endpoints
 @app.get("/nodes", response_model=List[NodeResponse])
@@ -123,11 +132,15 @@ async def update_node_config(node_id: int, config: NodeConfigurationCreate, db: 
     """Update node configuration - used by central management UI"""
     return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
 
-# Heartbeat endpoint for autoscaling nodes
+# Heartbeat endpoint for autoscaling nodes (with API key auth)
 @app.post("/nodes/{node_id}/heartbeat", response_model=HeartbeatResponse)
-async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, db: Session = Depends(get_db)):
+async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, node: models.Node = Depends(get_node_from_api_key), db: Session = Depends(get_db)):
     """Receive heartbeat from autoscaling nodes with metrics and status"""
     try:
+        # Verify the node_id matches the authenticated node
+        if node.id != node_id:
+            raise HTTPException(status_code=403, detail="Node ID mismatch")
+            
         response = HeartbeatService.process_heartbeat(db, node_id, heartbeat_data)
         return HeartbeatResponse(**response)
     except ValueError as e:

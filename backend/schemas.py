@@ -1,54 +1,56 @@
 
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Dict, Any
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-from models import NodeStatus, PoolStatus
+from enum import Enum
 
-# User schemas
-class UserBase(BaseModel):
-    email: EmailStr
-    full_name: str
+class NodeStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ERROR = "error"
 
-class UserCreate(UserBase):
-    password: str
-
-class UserResponse(UserBase):
-    id: int
-    is_active: bool
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
+class PoolStatus(str, Enum):
+    HEALTHY = "healthy"
+    WARNING = "warning" 
+    ERROR = "error"
 
 # Node schemas
-class NodeBase(BaseModel):
+class NodeCreate(BaseModel):
     name: str
     region: str
-    ip_address: str
-    port: Optional[int] = 8080
-    version: Optional[str] = None
-    node_metadata: Optional[str] = None
+    ip_address: Optional[str] = None
+    description: Optional[str] = None
 
-class NodeCreate(NodeBase):
+class NodeRegister(BaseModel):
+    name: str
+    region: str
+    ip_address: Optional[str] = None
+    description: Optional[str] = None
+
+class NodeRegisterResponse(BaseModel):
+    node_id: int
     api_key: str
-
+    name: str
+    region: str
+    
 class NodeUpdate(BaseModel):
     name: Optional[str] = None
     region: Optional[str] = None
     ip_address: Optional[str] = None
-    port: Optional[int] = None
+    description: Optional[str] = None
     status: Optional[NodeStatus] = None
-    version: Optional[str] = None
-    node_metadata: Optional[str] = None
 
-class NodeResponse(NodeBase):
+class NodeResponse(BaseModel):
     id: int
+    name: str
+    region: str
+    ip_address: Optional[str]
+    description: Optional[str]
     status: NodeStatus
     last_heartbeat: Optional[datetime]
-    config_hash: Optional[str]
     created_at: datetime
-    updated_at: Optional[datetime]
-    
+    has_api_key: bool = False
+
     class Config:
         from_attributes = True
 
@@ -61,16 +63,109 @@ class NodeConfigurationResponse(BaseModel):
     node_id: int
     yaml_config: str
     config_hash: str
-    version: int
     is_active: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
-# Pool Analytics schemas
-class PoolAnalyticsData(BaseModel):
+# Pool schemas
+class PoolCreate(BaseModel):
+    node_id: int
+    oracle_pool_id: str
+    name: str
+    region: str
+    min_instances: int = 1
+    max_instances: int = 10
+    current_instances: int = 1
+
+class PoolUpdate(BaseModel):
+    name: Optional[str] = None
+    min_instances: Optional[int] = None
+    max_instances: Optional[int] = None
+    current_instances: Optional[int] = None
+
+class PoolResponse(BaseModel):
+    id: int
+    node_id: int
+    oracle_pool_id: str
+    name: str
+    region: str
+    min_instances: int
+    max_instances: int
+    current_instances: int
+    status: PoolStatus
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Metrics schemas
+class MetricCreate(BaseModel):
+    node_id: int
     pool_id: Optional[int] = None
+    metric_type: str
+    value: float
+    unit: str
+
+class MetricResponse(BaseModel):
+    id: int
+    node_id: int
+    pool_id: Optional[int]
+    metric_type: str
+    value: float
+    unit: str
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+# Schedule schemas
+class ScheduleCreate(BaseModel):
+    node_id: int
+    name: str
+    start_time: str
+    end_time: str
+    target_instances: int
+    is_active: bool = True
+
+class ScheduleResponse(BaseModel):
+    id: int
+    node_id: int
+    name: str
+    start_time: str
+    end_time: str
+    target_instances: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# User schemas
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Auth schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# Heartbeat schemas
+class PoolAnalyticsData(BaseModel):
+    pool_id: int
     oracle_pool_id: str
     current_instances: int
     active_instances: int
@@ -82,6 +177,30 @@ class PoolAnalyticsData(BaseModel):
     is_active: bool = True
     scaling_event: Optional[str] = None
     scaling_reason: Optional[str] = None
+
+class NodeHeartbeatData(BaseModel):
+    status: str
+    config_hash: Optional[str] = None
+    error_message: Optional[str] = None
+    pool_analytics: Optional[List[PoolAnalyticsData]] = None
+    metrics_data: Optional[Dict[str, Any]] = None
+
+class HeartbeatResponse(BaseModel):
+    status: str
+    config_update_needed: bool
+    current_config_hash: Optional[str] = None
+    new_config: Optional[str] = None
+
+# Analytics schemas
+class SystemAnalyticsResponse(BaseModel):
+    total_active_pools: int
+    total_current_instances: int
+    peak_instances_24h: int
+    max_active_pools_24h: int
+    avg_system_cpu: float
+    avg_system_memory: float
+    active_nodes: int
+    last_updated: datetime
 
 class PoolAnalyticsResponse(BaseModel):
     id: int
@@ -99,117 +218,6 @@ class PoolAnalyticsResponse(BaseModel):
     is_active: bool
     scaling_event: Optional[str]
     scaling_reason: Optional[str]
-    
+
     class Config:
         from_attributes = True
-
-# System Analytics schemas
-class SystemAnalyticsResponse(BaseModel):
-    total_active_pools: int
-    total_current_instances: int
-    peak_instances_24h: int
-    max_active_pools_24h: int
-    avg_system_cpu: float
-    avg_system_memory: float
-    active_nodes: int
-    last_updated: datetime
-
-# Heartbeat schemas
-class NodeHeartbeatData(BaseModel):
-    config_hash: str
-    status: str
-    error_message: Optional[str] = None
-    metrics_data: Optional[Dict[str, Any]] = None
-    pool_analytics: Optional[List[PoolAnalyticsData]] = None
-
-class HeartbeatResponse(BaseModel):
-    status: str
-    config_update_needed: bool
-    current_config_hash: Optional[str] = None
-    new_config: Optional[str] = None
-
-# Pool schemas
-class PoolBase(BaseModel):
-    name: str
-    oracle_pool_id: str
-    compartment_id: str
-    min_instances: int = 1
-    max_instances: int = 10
-    target_instances: int = 2
-    cpu_threshold_scale_up: float = 80.0
-    cpu_threshold_scale_down: float = 30.0
-    memory_threshold_scale_up: float = 85.0
-    memory_threshold_scale_down: float = 40.0
-    scale_up_cooldown: int = 300
-    scale_down_cooldown: int = 600
-
-class PoolCreate(PoolBase):
-    node_id: int
-
-class PoolUpdate(BaseModel):
-    name: Optional[str] = None
-    min_instances: Optional[int] = None
-    max_instances: Optional[int] = None
-    target_instances: Optional[int] = None
-    cpu_threshold_scale_up: Optional[float] = None
-    cpu_threshold_scale_down: Optional[float] = None
-    memory_threshold_scale_up: Optional[float] = None
-    memory_threshold_scale_down: Optional[float] = None
-    scale_up_cooldown: Optional[int] = None
-    scale_down_cooldown: Optional[int] = None
-
-class PoolResponse(PoolBase):
-    id: int
-    node_id: int
-    current_instances: int
-    status: PoolStatus
-    created_at: datetime
-    updated_at: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
-
-# Metric schemas
-class MetricBase(BaseModel):
-    metric_type: str
-    metric_source: str
-    value: float
-    unit: Optional[str] = None
-    pool_id: Optional[str] = None
-    region: Optional[str] = None
-
-class MetricCreate(MetricBase):
-    node_id: int
-
-class MetricResponse(MetricBase):
-    id: int
-    node_id: int
-    timestamp: datetime
-    
-    class Config:
-        from_attributes = True
-
-# Schedule schemas
-class ScheduleBase(BaseModel):
-    name: str
-    cron_expression: str
-    target_instances: int
-    description: Optional[str] = None
-    is_active: bool = True
-
-class ScheduleCreate(ScheduleBase):
-    pool_id: int
-
-class ScheduleResponse(ScheduleBase):
-    id: int
-    pool_id: int
-    created_at: datetime
-    updated_at: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
-
-# Auth schemas
-class Token(BaseModel):
-    access_token: str
-    token_type: str

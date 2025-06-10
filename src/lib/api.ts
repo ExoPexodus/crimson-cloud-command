@@ -1,4 +1,3 @@
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
@@ -36,6 +35,20 @@ interface PoolAnalytics {
   is_active: boolean;
   scaling_event: string | null;
   scaling_reason: string | null;
+}
+
+interface NodeRegisterRequest {
+  name: string;
+  region: string;
+  ip_address?: string;
+  description?: string;
+}
+
+interface NodeRegisterResponse {
+  node_id: number;
+  api_key: string;
+  name: string;
+  region: string;
 }
 
 class ApiClient {
@@ -111,6 +124,13 @@ class ApiClient {
   // Nodes
   async getNodes(): Promise<ApiResponse<any[]>> {
     return this.request('/nodes');
+  }
+
+  async registerNode(node: NodeRegisterRequest): Promise<ApiResponse<NodeRegisterResponse>> {
+    return this.request('/nodes/register', {
+      method: 'POST',
+      body: JSON.stringify(node),
+    });
   }
 
   async createNode(node: any): Promise<ApiResponse<any>> {

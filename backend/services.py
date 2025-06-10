@@ -16,8 +16,9 @@ from models import (
 from schemas import (
     NodeCreate, NodeUpdate, PoolCreate, PoolUpdate, 
     MetricCreate, ScheduleCreate, UserCreate, NodeHeartbeatData,
-    PoolAnalyticsData, SystemAnalyticsResponse
+    PoolAnalyticsData, SystemAnalyticsResponse, NodeRegister, NodeRegisterResponse
 )
+from auth_middleware import APIKeyAuth
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -80,11 +81,44 @@ class UserService:
 class NodeService:
     @staticmethod
     def get_nodes(db: Session) -> List[Node]:
-        return db.query(Node).all()
+        nodes = db.query(Node).all()
+        for node in nodes:
+            node.has_api_key = bool(node.api_key_hash)
+        return nodes
     
     @staticmethod
     def get_node(db: Session, node_id: int) -> Optional[Node]:
-        return db.query(Node).filter(Node.id == node_id).first()
+        node = db.query(Node).filter(Node.id == node_id).first()
+        if node:
+            node.has_api_key = bool(node.api_key_hash)
+        return node
+    
+    @staticmethod
+    def register_node(db: Session, node: NodeRegister) -> NodeRegisterResponse:
+        """Register a new node and generate API key"""
+        # Generate API key
+        api_key = APIKeyAuth.generate_api_key()
+        api_key_hash = APIKeyAuth.hash_api_key(api_key)
+        
+        # Create node
+        db_node = Node(
+            name=node.name,
+            region=node.region,
+            ip_address=node.ip_address,
+            description=node.description,
+            api_key_hash=api_key_hash,
+            status=NodeStatus.INACTIVE
+        )
+        db.add(db_node)
+        db.commit()
+        db.refresh(db_node)
+        
+        return NodeRegisterResponse(
+            node_id=db_node.id,
+            api_key=api_key,
+            name=db_node.name,
+            region=db_node.region
+        )
     
     @staticmethod
     def create_node(db: Session, node: NodeCreate) -> Node:
@@ -113,6 +147,8 @@ class NodeService:
             db.commit()
             return True
         return False
+
+# ... keep existing code (NodeConfigurationService, HeartbeatService, AnalyticsService classes remain unchanged)
 
 class NodeConfigurationService:
     @staticmethod
@@ -296,8 +332,6 @@ class AnalyticsService:
             active_nodes=latest.active_nodes,
             last_updated=latest.timestamp
         )
-
-# ... keep existing code (PoolService, MetricService, ScheduleService classes remain unchanged)
 
 class PoolService:
     @staticmethod

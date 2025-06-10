@@ -15,6 +15,7 @@ from scheduler.scheduler import Scheduler
 from services.heartbeat_service import HeartbeatService
 import sys
 import hashlib
+import socket
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,23 +30,75 @@ class AutoscalerNode:
     def __init__(self):
         """Initialize the autoscaler node with backend integration."""
         self.backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-        self.node_id = int(os.getenv("NODE_ID", "1"))
+        self.node_id = os.getenv("NODE_ID")
         self.api_key = os.getenv("API_KEY", "")
+        self.node_name = os.getenv("NODE_NAME", f"AutoscalerNode-{socket.gethostname()}")
+        self.node_region = os.getenv("NODE_REGION", "us-ashburn-1")
         
-        if not self.api_key:
-            logging.warning("No API_KEY provided. Heartbeat service will be disabled.")
-            self.heartbeat_service = None
-        else:
+        # Convert node_id to int if provided
+        if self.node_id:
+            try:
+                self.node_id = int(self.node_id)
+            except ValueError:
+                logging.error("NODE_ID must be an integer")
+                self.node_id = None
+        
+        # Initialize heartbeat service
+        if self.node_id and self.api_key:
             self.heartbeat_service = HeartbeatService(self.backend_url, self.node_id, self.api_key)
+        else:
+            logging.info("No node credentials found. Will attempt auto-registration.")
+            self.heartbeat_service = HeartbeatService(self.backend_url, 0, "")
         
         self.heartbeat_thread = None
         self.stop_heartbeat = threading.Event()
         self.pool_analytics = []
         self.config_hash = None
 
+    def auto_register(self):
+        """Attempt to auto-register this node with the central backend."""
+        if self.node_id and self.api_key:
+            logging.info(f"Node already has credentials (ID: {self.node_id})")
+            return True
+            
+        logging.info("Attempting auto-registration with central backend...")
+        
+        # Get local IP address
+        try:
+            # Connect to a remote server to get local IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            local_ip = "127.0.0.1"
+        
+        result = self.heartbeat_service.register_node(
+            name=self.node_name,
+            region=self.node_region,
+            ip_address=local_ip,
+            description=f"Auto-registered autoscaling node on {socket.gethostname()}"
+        )
+        
+        if result:
+            self.node_id = result['node_id']
+            self.api_key = result['api_key']
+            
+            # Save credentials to environment for future runs
+            logging.info(f"Registration successful! Node ID: {self.node_id}")
+            logging.info("Save these credentials to your environment:")
+            logging.info(f"export NODE_ID={self.node_id}")
+            logging.info(f"export API_KEY={self.api_key}")
+            
+            return True
+        else:
+            logging.error("Auto-registration failed. Please register manually.")
+            return False
+
     def start_heartbeat(self):
         """Start the heartbeat service in a separate thread."""
-        if not self.heartbeat_service:
+        if not self.heartbeat_service or not self.node_id or not self.api_key:
+            logging.warning("Cannot start heartbeat - missing credentials")
             return
             
         def heartbeat_loop():
@@ -78,7 +131,7 @@ class AutoscalerNode:
         self.heartbeat_thread.start()
         logging.info("Heartbeat service started")
 
-    def stop_heartbeat(self):
+    def stop_heartbeat_service(self):
         """Stop the heartbeat service."""
         if self.heartbeat_thread:
             self.stop_heartbeat.set()
@@ -109,6 +162,8 @@ class AutoscalerNode:
             'pool_id': 1,  # This would need to be mapped from config
             **analytics_data
         })
+
+# ... keep existing code (get_collector and process_pool functions remain unchanged)
 
 def get_collector(pool, compute_management_client, monitoring_client):
     """
@@ -267,6 +322,11 @@ def main():
     # Initialize autoscaler node
     autoscaler_node = AutoscalerNode()
 
+    # Attempt auto-registration if needed
+    if not autoscaler_node.auto_register():
+        logging.error("Failed to register node. Exiting.")
+        return
+
     # Load configuration
     config_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), "config.yaml"
@@ -306,7 +366,7 @@ def main():
             logging.debug(f"Loaded pools from config: {config.get('pools')}")
     finally:
         # Stop heartbeat service on exit
-        autoscaler_node.stop_heartbeat()
+        autoscaler_node.stop_heartbeat_service()
 
 
 if __name__ == "__main__":

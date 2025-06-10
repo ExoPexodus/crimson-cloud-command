@@ -22,7 +22,7 @@ class HeartbeatService:
         self.api_key = api_key
         self.session = requests.Session()
         self.session.headers.update({
-            'Authorization': f'Bearer {api_key}',
+            'X-API-Key': api_key,  # Changed from Bearer token to API key
             'Content-Type': 'application/json'
         })
         
@@ -101,6 +101,51 @@ class HeartbeatService:
                 
         except requests.exceptions.RequestException as e:
             logging.error(f"Failed to fetch configuration: {e}")
+            return None
+    
+    def register_node(self, name: str, region: str, ip_address: str = None, description: str = None) -> Optional[Dict[str, Any]]:
+        """
+        Register this node with the central backend.
+        
+        Args:
+            name: Node name
+            region: Oracle Cloud region
+            ip_address: Optional IP address
+            description: Optional description
+            
+        Returns:
+            Registration response with node_id and api_key
+        """
+        try:
+            registration_data = {
+                'name': name,
+                'region': region
+            }
+            if ip_address:
+                registration_data['ip_address'] = ip_address
+            if description:
+                registration_data['description'] = description
+                
+            url = f"{self.backend_url}/nodes/register"
+            # Remove auth headers for registration
+            response = requests.post(url, json=registration_data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                logging.info(f"Node registered successfully with ID: {result['node_id']}")
+                
+                # Update this instance with new credentials
+                self.node_id = result['node_id']
+                self.api_key = result['api_key']
+                self.session.headers.update({'X-API-Key': self.api_key})
+                
+                return result
+            else:
+                logging.error(f"Registration failed: {response.status_code} - {response.text}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Failed to register node: {e}")
             return None
     
     def send_pool_analytics(self, pool_analytics: List[Dict]) -> bool:
