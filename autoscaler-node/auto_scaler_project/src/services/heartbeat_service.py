@@ -1,4 +1,3 @@
-
 import requests
 import logging
 import time
@@ -105,7 +104,7 @@ class HeartbeatService:
     
     def push_configuration(self, yaml_config: str) -> bool:
         """
-        Push local configuration to central backend.
+        Push local configuration to central backend using API key authentication.
         
         Args:
             yaml_config: YAML configuration string to push
@@ -114,7 +113,8 @@ class HeartbeatService:
             True if successful, False otherwise
         """
         try:
-            url = f"{self.backend_url}/nodes/{self.node_id}/config"
+            # Use the new API key authenticated endpoint
+            url = f"{self.backend_url}/nodes/{self.node_id}/config/push"
             config_data = {'yaml_config': yaml_config}
             response = self.session.put(url, json=config_data, timeout=30)
             

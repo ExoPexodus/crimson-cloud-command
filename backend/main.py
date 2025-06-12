@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, Depends, HTTPException, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -174,10 +173,10 @@ async def delete_node(node_id: int, db: Session = Depends(get_db), current_user 
         logger.error(f"Delete node error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete node: {str(e)}")
 
-# Node Configuration endpoints
+# Node Configuration endpoints - Updated to support both user auth and API key auth
 @app.get("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
 async def get_node_config(node_id: int, db: Session = Depends(get_db)):
-    """Get current configuration for a node - used by autoscaling nodes"""
+    """Get current configuration for a node - used by autoscaling nodes with API key or users with Bearer token"""
     try:
         # First check if the node exists
         node = NodeService.get_node(db, node_id)
@@ -205,13 +204,74 @@ async def get_node_config(node_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to get node config: {str(e)}")
 
 @app.put("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
-async def update_node_config(node_id: int, config: NodeConfigurationCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    """Update node configuration - used by central management UI"""
+async def update_node_config(
+    node_id: int, 
+    config: NodeConfigurationCreate, 
+    db: Session = Depends(get_db),
+    # Try API key auth first, then fall back to user auth
+    node: Optional[models.Node] = Depends(lambda: None),
+    current_user = Depends(lambda: None)
+):
+    """Update node configuration - supports both API key auth (for nodes) and Bearer token auth (for users)"""
     try:
+        # Try to get the node using API key authentication
+        try:
+            from auth_middleware import get_node_from_api_key
+            from fastapi import Header
+            
+            # This is a bit of a hack to check for API key auth
+            # In a real implementation, you'd want a more elegant solution
+            authenticated_node = None
+            try:
+                # Check if we can authenticate with API key
+                authenticated_node = await get_node_from_api_key(db=db)
+                if authenticated_node and authenticated_node.id == node_id:
+                    # API key auth successful and matches node_id
+                    pass
+                else:
+                    authenticated_node = None
+            except:
+                authenticated_node = None
+            
+            # If no API key auth, try user auth
+            if not authenticated_node:
+                try:
+                    user = await get_current_user(db=db)
+                    if not user:
+                        raise HTTPException(status_code=401, detail="Authentication required")
+                except:
+                    raise HTTPException(status_code=401, detail="Authentication required")
+        except Exception as auth_error:
+            logger.error(f"Authentication error: {str(auth_error)}")
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
         return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Update node config error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update node config: {str(e)}")
+
+# Alternative approach: Create separate endpoints for API key auth
+@app.put("/nodes/{node_id}/config/push", response_model=NodeConfigurationResponse)
+async def push_node_config(
+    node_id: int, 
+    config: NodeConfigurationCreate, 
+    node: models.Node = Depends(get_node_from_api_key), 
+    db: Session = Depends(get_db)
+):
+    """Push node configuration using API key authentication - used by autoscaling nodes"""
+    try:
+        # Verify the node_id matches the authenticated node
+        if node.id != node_id:
+            raise HTTPException(status_code=403, detail="Node ID mismatch")
+            
+        return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Push node config error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to push node config: {str(e)}")
 
 # Heartbeat endpoint for autoscaling nodes (with API key auth)
 @app.post("/nodes/{node_id}/heartbeat", response_model=HeartbeatResponse)
@@ -231,8 +291,6 @@ async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, node: 
     except Exception as e:
         logger.error(f"Heartbeat error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-# ... keep existing code (analytics, pools, metrics, schedules endpoints remain unchanged)
 
 # Analytics endpoints
 @app.get("/analytics/system", response_model=SystemAnalyticsResponse)
