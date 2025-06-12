@@ -179,9 +179,24 @@ async def delete_node(node_id: int, db: Session = Depends(get_db), current_user 
 async def get_node_config(node_id: int, db: Session = Depends(get_db)):
     """Get current configuration for a node - used by autoscaling nodes"""
     try:
+        # First check if the node exists
+        node = NodeService.get_node(db, node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
         config = NodeConfigurationService.get_node_config(db, node_id)
         if not config:
-            raise HTTPException(status_code=404, detail="Configuration not found")
+            # Return a default empty configuration instead of 404
+            logger.info(f"No configuration found for node {node_id}, returning empty config")
+            return NodeConfigurationResponse(
+                id=0,
+                node_id=node_id,
+                yaml_config="# No configuration set yet\n",
+                config_hash="",
+                is_active=False,
+                created_at="1970-01-01T00:00:00Z",
+                updated_at="1970-01-01T00:00:00Z"
+            )
         return config
     except HTTPException:
         raise
@@ -216,6 +231,8 @@ async def node_heartbeat(node_id: int, heartbeat_data: NodeHeartbeatData, node: 
     except Exception as e:
         logger.error(f"Heartbeat error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# ... keep existing code (analytics, pools, metrics, schedules endpoints remain unchanged)
 
 # Analytics endpoints
 @app.get("/analytics/system", response_model=SystemAnalyticsResponse)

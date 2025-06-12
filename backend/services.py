@@ -148,8 +148,6 @@ class NodeService:
             return True
         return False
 
-# ... keep existing code (NodeConfigurationService, HeartbeatService, AnalyticsService classes remain unchanged)
-
 class NodeConfigurationService:
     @staticmethod
     def get_node_config(db: Session, node_id: int) -> Optional[NodeConfiguration]:
@@ -188,13 +186,16 @@ class HeartbeatService:
         node.last_heartbeat = datetime.utcnow()
         node.status = NodeStatus.ACTIVE
         
+        # Convert metrics_data dict to JSON string for database storage
+        metrics_data_json = json.dumps(heartbeat_data.metrics_data) if heartbeat_data.metrics_data else None
+        
         # Store heartbeat record
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             config_hash=heartbeat_data.config_hash,
             status=heartbeat_data.status,
             error_message=heartbeat_data.error_message,
-            metrics_data=heartbeat_data.metrics_data
+            metrics_data=metrics_data_json  # Store as JSON string
         )
         db.add(heartbeat)
         
@@ -221,6 +222,8 @@ class HeartbeatService:
             response["new_config"] = current_config.yaml_config
         
         return response
+
+# ... keep existing code (AnalyticsService, PoolService, MetricService, ScheduleService classes remain unchanged)
 
 class AnalyticsService:
     @staticmethod
