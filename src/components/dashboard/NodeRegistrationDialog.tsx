@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Dialog,
@@ -61,6 +62,7 @@ export function NodeRegistrationDialog({ isOpen, onClose, onNodeRegistered }: No
 
       setRegistrationResult(response.data!);
       setStep("success");
+      // Call onNodeRegistered but don't close the dialog yet
       onNodeRegistered();
     } catch (error) {
       toast({
@@ -82,9 +84,11 @@ export function NodeRegistrationDialog({ isOpen, onClose, onNodeRegistered }: No
   };
 
   const handleClose = () => {
+    // Reset state when closing
     setStep("form");
     setRegistrationData({ name: "", region: "", ip_address: "", description: "" });
     setRegistrationResult(null);
+    setLoading(false);
     onClose();
   };
 
@@ -130,7 +134,7 @@ pools:
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={step === "form" ? handleClose : undefined}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -146,7 +150,7 @@ pools:
           <DialogDescription>
             {step === "form" 
               ? "Enter the details for your new autoscaling node"
-              : "Your node has been registered. Save these credentials securely - you won't see the API key again unless you configure the node."
+              : "Your node has been registered. Save these credentials securely - the API key won't be shown again."
             }
           </DialogDescription>
         </DialogHeader>
@@ -218,7 +222,7 @@ pools:
                   <p className="font-semibold text-yellow-600">Important Security Notice</p>
                   <p className="text-sm text-yellow-600/80">
                     This API key will only be shown once. Make sure to copy and save it securely. 
-                    You can view it again later by configuring the node.
+                    You can view the node configuration later but not the API key.
                   </p>
                 </div>
               </div>

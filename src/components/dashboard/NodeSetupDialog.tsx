@@ -71,14 +71,19 @@ pools:
     scheduler_max_instances: 8`;
 
   const handleNodeRegistered = () => {
-    setRegistrationDialogOpen(false);
     if (onNodeRegistered) {
       onNodeRegistered();
     }
-    toast({
-      title: "Success!",
-      description: "Node registered successfully. You can now configure it.",
-    });
+    // Don't close the registration dialog automatically
+    // Let the user close it manually after copying credentials
+  };
+
+  const handleOpenRegistration = () => {
+    setRegistrationDialogOpen(true);
+  };
+
+  const handleCloseRegistration = () => {
+    setRegistrationDialogOpen(false);
   };
 
   return (
@@ -109,7 +114,7 @@ pools:
                     Register your node with the central system to automatically generate credentials and configuration.
                   </p>
                   <Button 
-                    onClick={() => setRegistrationDialogOpen(true)}
+                    onClick={handleOpenRegistration}
                     className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
                     size="lg"
                   >
@@ -232,7 +237,7 @@ pools:
 
       <NodeRegistrationDialog
         isOpen={registrationDialogOpen}
-        onClose={() => setRegistrationDialogOpen(false)}
+        onClose={handleCloseRegistration}
         onNodeRegistered={handleNodeRegistered}
       />
     </>
