@@ -5,7 +5,7 @@ import os
 import threading
 from collectors.prometheus_collector import PrometheusMetricsCollector
 from collectors.oci_collector import OCIMetricsCollector
-from user_config.config_manager import build_oci_config, load_yaml_config
+from user_config.config_manager import build_oci_config, load_config, get_backend_config
 from scaling_logic.auto_scaler import evaluate_metrics
 from oracle_sdk_wrapper.oci_scaling import initialize_oci_client
 from instance_manager.instance_pool import get_instances_from_instance_pool
@@ -27,11 +27,11 @@ logging.basicConfig(
 )
 
 class AutoscalerNode:
-    def __init__(self):
+    def __init__(self, backend_config):
         """Initialize the autoscaler node with backend integration."""
-        self.backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-        self.node_id = os.getenv("NODE_ID")
-        self.api_key = os.getenv("API_KEY", "")
+        self.backend_url = backend_config['url']
+        self.node_id = backend_config['node_id']
+        self.api_key = backend_config['api_key']
         self.node_name = os.getenv("NODE_NAME", f"AutoscalerNode-{socket.gethostname()}")
         self.node_region = os.getenv("NODE_REGION", "us-ashburn-1")
         
@@ -42,6 +42,10 @@ class AutoscalerNode:
             except ValueError:
                 logging.error("NODE_ID must be an integer")
                 self.node_id = None
+        
+        logging.info(f"Backend URL: {self.backend_url}")
+        logging.info(f"Node ID: {self.node_id}")
+        logging.info(f"API Key: {'***' + self.api_key[-4:] if self.api_key else 'Not set'}")
         
         # Initialize heartbeat service
         if self.node_id and self.api_key:
@@ -86,15 +90,18 @@ class AutoscalerNode:
             
             # Save credentials to environment for future runs
             logging.info(f"Registration successful! Node ID: {self.node_id}")
-            logging.info("Save these credentials to your environment:")
-            logging.info(f"export NODE_ID={self.node_id}")
-            logging.info(f"export API_KEY={self.api_key}")
+            logging.info("Save these credentials to your config.yaml file:")
+            logging.info(f"backend:")
+            logging.info(f"  node_id: {self.node_id}")
+            logging.info(f"  api_key: \"{self.api_key}\"")
             
             return True
         else:
             logging.error("Auto-registration failed. Please register manually.")
             return False
 
+    # ... keep existing code (start_heartbeat, stop_heartbeat_service, update_configuration, add_pool_analytics methods remain unchanged)
+    
     def start_heartbeat(self):
         """Start the heartbeat service in a separate thread."""
         if not self.heartbeat_service or not self.node_id or not self.api_key:
@@ -319,37 +326,41 @@ def process_pool(pool, autoscaler_node):
 def main():
     logging.info("Starting autoscaling process...")
     
-    # Initialize autoscaler node
-    autoscaler_node = AutoscalerNode()
-
-    # Attempt auto-registration if needed
-    if not autoscaler_node.auto_register():
-        logging.error("Failed to register node. Exiting.")
-        return
-
-    # Load configuration
+    # Load configuration first to get backend settings
     config_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), "config.yaml"
     )
     logging.debug(f"Loading configuration from: {config_path}")
     
     try:
-        # Try to get config from backend first
-        if autoscaler_node.heartbeat_service:
-            remote_config = autoscaler_node.heartbeat_service.get_configuration()
-            if remote_config:
-                autoscaler_node.update_configuration(remote_config)
-        
-        config = load_yaml_config(config_path)
+        config = load_config(config_path)
+        backend_config = get_backend_config(config)
         
         # Calculate config hash
         with open(config_path, 'r') as f:
             config_content = f.read()
-        autoscaler_node.config_hash = hashlib.sha256(config_content.encode()).hexdigest()
+        config_hash = hashlib.sha256(config_content.encode()).hexdigest()
         
     except Exception as e:
         logging.error(f"Failed to load configuration file: {e}")
         raise RuntimeError(f"Configuration file load failed: {e}")
+
+    # Initialize autoscaler node with backend config from YAML
+    autoscaler_node = AutoscalerNode(backend_config)
+    autoscaler_node.config_hash = config_hash
+
+    # Attempt auto-registration if needed
+    if not autoscaler_node.auto_register():
+        logging.error("Failed to register node. Exiting.")
+        return
+
+    # Try to get config from backend first
+    if autoscaler_node.heartbeat_service:
+        remote_config = autoscaler_node.heartbeat_service.get_configuration()
+        if remote_config:
+            autoscaler_node.update_configuration(remote_config)
+            # Reload config after update
+            config = load_config(config_path)
 
     # Start heartbeat service
     autoscaler_node.start_heartbeat()

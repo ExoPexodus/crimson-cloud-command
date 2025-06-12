@@ -1,3 +1,4 @@
+
 import os
 from .yaml_loader import load_yaml_config
 import logging
@@ -6,6 +7,15 @@ from dotenv import load_dotenv
 
 def load_config(file_path="config.yaml"):
     return load_yaml_config(file_path)
+
+def get_backend_config(config):
+    """Extract backend configuration from YAML config."""
+    backend_config = config.get('backend', {})
+    return {
+        'url': backend_config.get('url', 'http://localhost:8000'),
+        'node_id': backend_config.get('node_id'),
+        'api_key': backend_config.get('api_key', '')
+    }
 
 def build_oci_config(selected_region):
     load_dotenv()
