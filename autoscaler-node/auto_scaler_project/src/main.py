@@ -3,6 +3,8 @@ import logging
 import time
 import os
 import threading
+import signal
+import sys
 from collectors.prometheus_collector import PrometheusMetricsCollector
 from collectors.oci_collector import OCIMetricsCollector
 from user_config.config_manager import build_oci_config, load_config, get_backend_config
@@ -13,7 +15,6 @@ from oci.monitoring import MonitoringClient
 from oci.core import ComputeManagementClient
 from scheduler.scheduler import Scheduler
 from services.heartbeat_service import HeartbeatService
-import sys
 import hashlib
 import socket
 
@@ -58,6 +59,8 @@ class AutoscalerNode:
         self.stop_heartbeat = threading.Event()
         self.pool_analytics = []
         self.config_hash = None
+        self.pool_threads = []
+        self.stop_all_pools = threading.Event()
 
     def auto_register(self):
         """Attempt to auto-register this node with the central backend."""
@@ -100,8 +103,43 @@ class AutoscalerNode:
             logging.error("Auto-registration failed. Please register manually.")
             return False
 
-    # ... keep existing code (start_heartbeat, stop_heartbeat_service, update_configuration, add_pool_analytics methods remain unchanged)
-    
+    def sync_configuration_with_backend(self, local_config_path: str) -> bool:
+        """
+        Sync configuration with backend. Push local config if backend has none,
+        or pull from backend if it has a configuration.
+        
+        Returns:
+            True if sync successful, False otherwise
+        """
+        if not self.heartbeat_service or not self.node_id or not self.api_key:
+            logging.warning("Cannot sync config - missing credentials")
+            return False
+        
+        try:
+            # Try to get config from backend
+            remote_config = self.heartbeat_service.get_configuration()
+            
+            if remote_config and remote_config.strip() != "# No configuration set yet":
+                # Backend has config, use it
+                logging.info("Found configuration on backend, updating local config")
+                return self.update_configuration(remote_config, local_config_path)
+            else:
+                # Backend has no config, push local config
+                logging.info("No configuration found on backend, pushing local config")
+                with open(local_config_path, 'r') as f:
+                    local_config = f.read()
+                
+                if self.heartbeat_service.push_configuration(local_config):
+                    logging.info("Local configuration pushed to backend successfully")
+                    return True
+                else:
+                    logging.error("Failed to push local configuration to backend")
+                    return False
+                    
+        except Exception as e:
+            logging.error(f"Failed to sync configuration with backend: {e}")
+            return False
+
     def start_heartbeat(self):
         """Start the heartbeat service in a separate thread."""
         if not self.heartbeat_service or not self.node_id or not self.api_key:
@@ -119,10 +157,15 @@ class AutoscalerNode:
                     
                     # Check if configuration update is needed
                     if response.get('config_update_needed'):
-                        logging.info("Configuration update detected")
+                        logging.info("Configuration update detected from backend")
                         new_config = self.heartbeat_service.get_configuration()
                         if new_config:
-                            self.update_configuration(new_config)
+                            config_path = os.path.join(
+                                os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+                            )
+                            if self.update_configuration(new_config, config_path):
+                                # Restart all pool monitoring with new config
+                                self.restart_pool_monitoring()
                     
                     # Clear pool analytics after sending
                     self.pool_analytics = []
@@ -145,22 +188,50 @@ class AutoscalerNode:
             self.heartbeat_thread.join()
             logging.info("Heartbeat service stopped")
 
-    def update_configuration(self, yaml_config: str):
+    def update_configuration(self, yaml_config: str, config_path: str) -> bool:
         """Update configuration and restart services if needed."""
         try:
             # Save new configuration
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "config.yaml"
-            )
             with open(config_path, 'w') as f:
                 f.write(yaml_config)
             
             # Update config hash
             self.config_hash = hashlib.sha256(yaml_config.encode()).hexdigest()
             logging.info("Configuration updated successfully")
+            return True
             
         except Exception as e:
             logging.error(f"Failed to update configuration: {e}")
+            return False
+
+    def restart_pool_monitoring(self):
+        """Restart all pool monitoring threads with new configuration."""
+        logging.info("Restarting pool monitoring with updated configuration...")
+        
+        # Stop all current pool threads
+        self.stop_all_pools.set()
+        for thread in self.pool_threads:
+            if thread.is_alive():
+                thread.join(timeout=10)
+        
+        # Clear thread list and reset stop event
+        self.pool_threads = []
+        self.stop_all_pools.clear()
+        
+        # Reload configuration and restart monitoring
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+        )
+        try:
+            config = load_config(config_path)
+            for pool in config["pools"]:
+                thread = threading.Thread(target=process_pool, args=(pool, self))
+                thread.daemon = True
+                thread.start()
+                self.pool_threads.append(thread)
+            logging.info("Pool monitoring restarted successfully")
+        except Exception as e:
+            logging.error(f"Failed to restart pool monitoring: {e}")
 
     def add_pool_analytics(self, pool_id: str, analytics_data: dict):
         """Add pool analytics data to be sent with next heartbeat."""
@@ -170,7 +241,17 @@ class AutoscalerNode:
             **analytics_data
         })
 
-# ... keep existing code (get_collector and process_pool functions remain unchanged)
+    def shutdown(self):
+        """Gracefully shutdown the autoscaler node."""
+        logging.info("Shutting down autoscaler node...")
+        self.stop_heartbeat_service()
+        self.stop_all_pools.set()
+        for thread in self.pool_threads:
+            if thread.is_alive():
+                thread.join(timeout=10)
+        logging.info("Autoscaler node shutdown complete")
+
+# ... keep existing code (get_collector function remains unchanged)
 
 def get_collector(pool, compute_management_client, monitoring_client):
     """
@@ -276,7 +357,7 @@ def process_pool(pool, autoscaler_node):
     # Monitor and scale
     try:
         logging.info(f"Starting monitoring loop for pool: {pool['instance_pool_id']}")
-        while True:
+        while not autoscaler_node.stop_all_pools.is_set():
             try:
                 # Get metrics before scaling evaluation
                 avg_cpu, avg_ram = collector.get_metrics()
@@ -308,7 +389,11 @@ def process_pool(pool, autoscaler_node):
             except RuntimeError as e:
                 logging.error(f"Runtime error in evaluate_metrics: {e}")
                 raise  # Re-raise to stop further execution
-            time.sleep(300)  # Sleep for 5 minutes between checks
+            
+            # Check for stop signal before sleeping
+            if autoscaler_node.stop_all_pools.wait(300):  # 5 minutes with early exit
+                break
+                
     except KeyboardInterrupt:
         logging.info(f"Terminating monitoring for pool: {pool['instance_pool_id']}")
     except Exception as e:
@@ -349,35 +434,50 @@ def main():
     autoscaler_node = AutoscalerNode(backend_config)
     autoscaler_node.config_hash = config_hash
 
+    # Set up signal handler for graceful shutdown
+    def signal_handler(signum, frame):
+        logging.info("Received shutdown signal")
+        autoscaler_node.shutdown()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # Attempt auto-registration if needed
     if not autoscaler_node.auto_register():
         logging.error("Failed to register node. Exiting.")
         return
 
-    # Try to get config from backend first
-    if autoscaler_node.heartbeat_service:
-        remote_config = autoscaler_node.heartbeat_service.get_configuration()
-        if remote_config:
-            autoscaler_node.update_configuration(remote_config)
-            # Reload config after update
-            config = load_config(config_path)
+    # Sync configuration with backend
+    if not autoscaler_node.sync_configuration_with_backend(config_path):
+        logging.warning("Failed to sync configuration with backend, continuing with local config")
+    else:
+        # Reload config after sync
+        config = load_config(config_path)
 
     # Start heartbeat service
     autoscaler_node.start_heartbeat()
 
     try:
-        # Process each pool from the configuration
+        # Process each pool from the configuration in separate threads
         for pool in config["pools"]:
             logging.debug(f"Starting processing for pool: {pool}")
             try:
-                process_pool(pool, autoscaler_node)
+                thread = threading.Thread(target=process_pool, args=(pool, autoscaler_node))
+                thread.daemon = True
+                thread.start()
+                autoscaler_node.pool_threads.append(thread)
             except RuntimeError as re:
                 logging.error(f"Error processing pool {pool['instance_pool_id']}: {re}")
                 continue  # Skip to the next pool
-            logging.debug(f"Loaded pools from config: {config.get('pools')}")
+        
+        # Wait for all threads to complete
+        for thread in autoscaler_node.pool_threads:
+            thread.join()
+            
     finally:
         # Stop heartbeat service on exit
-        autoscaler_node.stop_heartbeat_service()
+        autoscaler_node.shutdown()
 
 
 if __name__ == "__main__":

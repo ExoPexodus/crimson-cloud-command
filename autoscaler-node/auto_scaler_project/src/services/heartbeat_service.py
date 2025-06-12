@@ -103,6 +103,32 @@ class HeartbeatService:
             logging.error(f"Failed to fetch configuration: {e}")
             return None
     
+    def push_configuration(self, yaml_config: str) -> bool:
+        """
+        Push local configuration to central backend.
+        
+        Args:
+            yaml_config: YAML configuration string to push
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            url = f"{self.backend_url}/nodes/{self.node_id}/config"
+            config_data = {'yaml_config': yaml_config}
+            response = self.session.put(url, json=config_data, timeout=30)
+            
+            if response.status_code == 200:
+                logging.info("Configuration pushed successfully to central backend")
+                return True
+            else:
+                logging.error(f"Failed to push config: {response.status_code} - {response.text}")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Failed to push configuration: {e}")
+            return False
+    
     def register_node(self, name: str, region: str, ip_address: str = None, description: str = None) -> Optional[Dict[str, Any]]:
         """
         Register this node with the central backend.
