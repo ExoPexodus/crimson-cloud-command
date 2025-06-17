@@ -5,11 +5,12 @@ import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, RefreshCw, Settings, Activity, Trash2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Plus, RefreshCw, Settings, Activity, Server, Cpu, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
-import { NodeConfigDialog } from "@/components/dashboard/NodeConfigDialog";
+import { NodeConfigEditor } from "@/components/dashboard/NodeConfigEditor";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
 
 interface Node {
@@ -22,13 +23,22 @@ interface Node {
   api_key_hash?: string;
 }
 
+interface NodeAnalytics {
+  current_instances: number;
+  active_instances: number;
+  avg_cpu_utilization: number;
+  avg_memory_utilization: number;
+  pool_status: string;
+}
+
 const Nodes = () => {
   const { toast } = useToast();
   const [nodes, setNodes] = useState<Node[]>([]);
+  const [nodeAnalytics, setNodeAnalytics] = useState<Record<number, NodeAnalytics>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
-  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [configEditorOpen, setConfigEditorOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   useEffect(() => {
@@ -44,6 +54,8 @@ const Nodes = () => {
       const response = await apiClient.getNodes();
       if (response.data) {
         setNodes(response.data);
+        // Fetch analytics for each node
+        fetchNodeAnalytics(response.data);
       }
     } catch (error) {
       console.error("Error fetching nodes:", error);
@@ -52,6 +64,29 @@ const Nodes = () => {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const fetchNodeAnalytics = async (nodes: Node[]) => {
+    const analyticsPromises = nodes.map(async (node) => {
+      try {
+        const response = await apiClient.getNodeAnalytics(node.id);
+        return { nodeId: node.id, analytics: response.data };
+      } catch (error) {
+        console.error(`Error fetching analytics for node ${node.id}:`, error);
+        return { nodeId: node.id, analytics: null };
+      }
+    });
+
+    const results = await Promise.all(analyticsPromises);
+    const analyticsMap: Record<number, NodeAnalytics> = {};
+    
+    results.forEach(({ nodeId, analytics }) => {
+      if (analytics) {
+        analyticsMap[nodeId] = analytics;
+      }
+    });
+    
+    setNodeAnalytics(analyticsMap);
   };
   
   const handleRefresh = () => {
@@ -65,11 +100,7 @@ const Nodes = () => {
 
   const handleConfigureNode = (node: Node) => {
     setSelectedNode(node);
-    setConfigDialogOpen(true);
-  };
-
-  const handleNodeDeleted = () => {
-    fetchNodes(); // Refresh the list
+    setConfigEditorOpen(true);
   };
 
   const getNodeStatus = (node: Node): "healthy" | "warning" | "error" | "inactive" => {
@@ -115,7 +146,7 @@ const Nodes = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
                   <h1 className="text-2xl font-bold mb-1">Autoscaling Nodes</h1>
-                  <p className="text-sm text-muted-foreground">Manage your connected autoscaling nodes</p>
+                  <p className="text-sm text-muted-foreground">Manage your connected autoscaling nodes and their instance pools</p>
                 </div>
                 <div className="flex gap-2 mt-3 sm:mt-0">
                   <Button 
@@ -139,9 +170,9 @@ const Nodes = () => {
               
               {/* Loading State */}
               {loading && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-48 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
+                    <div key={i} className="h-64 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
                   ))}
                 </div>
               )}
@@ -166,21 +197,29 @@ const Nodes = () => {
               
               {/* Nodes Grid */}
               {!loading && nodes.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {nodes.map((node) => {
                     const status = getNodeStatus(node);
+                    const analytics = nodeAnalytics[node.id];
+                    
                     return (
                       <Card key={node.id} className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
                         <div className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h3 className="font-semibold text-lg">{node.name}</h3>
-                              <p className="text-sm text-muted-foreground">{node.region}</p>
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="rounded bg-dark-bg/80 p-2">
+                                <Server size={20} className="text-dark-teal-400" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-lg">{node.name}</h3>
+                                <p className="text-sm text-muted-foreground">{node.region}</p>
+                              </div>
                             </div>
                             <StatusIndicator status={status} showLabel={false} />
                           </div>
                           
-                          <div className="space-y-2 text-sm">
+                          {/* Node Status */}
+                          <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Status:</span>
                               <StatusIndicator status={status} />
@@ -193,9 +232,57 @@ const Nodes = () => {
                               <span className="text-muted-foreground">Node ID:</span>
                               <span className="font-mono text-xs">{node.id}</span>
                             </div>
+                            {analytics && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Instances:</span>
+                                <span>{analytics.current_instances} active</span>
+                              </div>
+                            )}
                           </div>
+
+                          {/* Instance Pool Metrics */}
+                          {analytics && (
+                            <div className="space-y-3 mb-4 p-3 bg-dark-bg/30 rounded-lg">
+                              <h4 className="text-sm font-medium text-dark-teal-400 flex items-center gap-2">
+                                <Activity size={14} />
+                                Instance Pool Metrics
+                              </h4>
+                              
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="flex items-center gap-1">
+                                      <Cpu size={12} />
+                                      CPU Usage
+                                    </span>
+                                    <span className="text-muted-foreground">{analytics.avg_cpu_utilization?.toFixed(1)}%</span>
+                                  </div>
+                                  <Progress 
+                                    value={analytics.avg_cpu_utilization} 
+                                    className="h-1.5" 
+                                    indicatorClassName="bg-dark-teal-500" 
+                                  />
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="flex items-center gap-1">
+                                      <HardDrive size={12} />
+                                      Memory Usage
+                                    </span>
+                                    <span className="text-muted-foreground">{analytics.avg_memory_utilization?.toFixed(1)}%</span>
+                                  </div>
+                                  <Progress 
+                                    value={analytics.avg_memory_utilization} 
+                                    className="h-1.5" 
+                                    indicatorClassName="bg-dark-teal-400" 
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           
-                          <div className="mt-4 pt-3 border-t border-dark-bg-light/30">
+                          <div className="pt-3 border-t border-dark-bg-light/30">
                             <Button
                               variant="outline"
                               size="sm"
@@ -224,11 +311,11 @@ const Nodes = () => {
         onNodeRegistered={fetchNodes}
       />
 
-      <NodeConfigDialog
-        isOpen={configDialogOpen}
-        onClose={() => setConfigDialogOpen(false)}
-        node={selectedNode}
-        onNodeDeleted={handleNodeDeleted}
+      <NodeConfigEditor
+        isOpen={configEditorOpen}
+        onClose={() => setConfigEditorOpen(false)}
+        nodeId={selectedNode?.id || null}
+        nodeName={selectedNode?.name || ""}
       />
     </SidebarProvider>
   );

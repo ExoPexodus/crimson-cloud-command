@@ -158,11 +158,16 @@ class ApiClient {
     return this.request(`/nodes/${nodeId}/config`);
   }
 
-  async updateNodeConfig(nodeId: number, yamlConfig: string): Promise<ApiResponse<any>> {
+  async updateNodeConfig(nodeId: number, config: any): Promise<ApiResponse<any>> {
     return this.request(`/nodes/${nodeId}/config`, {
       method: 'PUT',
-      body: JSON.stringify({ yaml_config: yamlConfig }),
+      body: JSON.stringify(config),
     });
+  }
+
+  // Node Analytics
+  async getNodeAnalytics(nodeId: number): Promise<ApiResponse<any>> {
+    return this.request(`/nodes/${nodeId}/analytics`);
   }
 
   // Pools

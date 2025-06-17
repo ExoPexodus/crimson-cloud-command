@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
 import logging
+import json
+from datetime import datetime
 
 from database import engine, get_db, SessionLocal
 import models
@@ -319,6 +321,72 @@ async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db:
     except Exception as e:
         logger.error(f"Get pool analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get pool analytics: {str(e)}")
+
+# Node analytics endpoint
+@app.get("/nodes/{node_id}/analytics")
+async def get_node_analytics(node_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get the latest analytics for a specific node"""
+    # Get the latest pool analytics for this node
+    latest_analytics = db.query(PoolAnalytics)\
+        .filter(PoolAnalytics.node_id == node_id)\
+        .order_by(PoolAnalytics.timestamp.desc())\
+        .first()
+    
+    if not latest_analytics:
+        return {
+            "current_instances": 0,
+            "active_instances": 0,
+            "avg_cpu_utilization": 0,
+            "avg_memory_utilization": 0,
+            "pool_status": "inactive"
+        }
+    
+    return {
+        "current_instances": latest_analytics.current_instances,
+        "active_instances": latest_analytics.active_instances,
+        "avg_cpu_utilization": latest_analytics.avg_cpu_utilization,
+        "avg_memory_utilization": latest_analytics.avg_memory_utilization,
+        "pool_status": latest_analytics.pool_status
+    }
+
+# Update node configuration endpoint
+@app.put("/nodes/{node_id}/config")
+async def update_node_configuration(
+    node_id: int,
+    config: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update node configuration"""
+    try:
+        # Check if node exists
+        node = db.query(Node).filter(Node.id == node_id).first()
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        # Update or create node configuration
+        node_config = db.query(NodeConfiguration).filter(NodeConfiguration.node_id == node_id).first()
+        
+        if node_config:
+            node_config.yaml_config = json.dumps(config)
+            node_config.updated_at = datetime.utcnow()
+        else:
+            node_config = NodeConfiguration(
+                node_id=node_id,
+                yaml_config=json.dumps(config),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.add(node_config)
+        
+        db.commit()
+        
+        return {"message": "Configuration updated successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error updating node configuration: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Pool management endpoints
 @app.get("/pools", response_model=List[PoolResponse])
