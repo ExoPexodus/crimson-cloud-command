@@ -6,10 +6,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: autoscaler
+    network_mode: host
     env_file:
       - .env
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ./config.yaml:/app/config.yaml
       - ./logs/autoscaling.log:/app/autoscaling.log
       - ./privatekey.pem:/app/privatekey.pem
     logging:

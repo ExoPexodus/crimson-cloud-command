@@ -5,9 +5,9 @@
 # Backend Integration (optional)
 # If provided, the node will register with the central management system
 backend:
-  url: "http://localhost:8000"  # Central backend URL
-  node_id: 1                    # Unique node ID
-  api_key: ""                   # API key for authentication
+  url: "http://172.17.104.139:8000"  # Central backend URL
+  node_id: 6                    # Unique node ID
+  api_key: "Bea-DEBj79yfHCysoOyodkPtVWcNO5V_6OTzlLckk-k"                   # API key for authentication
 
 pools:
   - instance_pool_id: "ocid1.instancepool.oc1.ap-mumbai-1.example"
@@ -38,13 +38,3 @@ pools:
     
     # Maximum instances for scheduled scaling
     scheduler_max_instances: 8
-
-  # Additional pools can be added here
-  # - instance_pool_id: "ocid1.instancepool.oc1.us-ashburn-1.example"
-  #   compartment_id: "ocid1.compartment.oc1..example"
-  #   region: "us-ashburn-1"
-  #   monitoring_method: "prometheus"
-  #   prometheus_url: "http://prometheus.example.com:9090"
-  #   cpu_threshold: {min: 15, max: 80}
-  #   ram_threshold: {min: 25, max: 80}
-  #   scaling_limits: {min: 1, max: 5}
