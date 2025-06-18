@@ -3,59 +3,54 @@ import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
 
-interface NodeAnalytics {
-  avg_cpu_utilization: number;
-  avg_memory_utilization: number;
+interface PoolAnalytics {
+  id: number;
+  timestamp: string;
   current_instances: number;
-  active_instances: number;
-  max_instances: number;
-  oracle_pool_id: string;
+  avg_cpu_utilization: number;
 }
 
 export function MetricsChartsSection() {
-  const [nodeActivityData, setNodeActivityData] = useState<Array<{ name: string; value: number }>>([]);
+  const [poolActivityData, setPoolActivityData] = useState<Array<{ name: string; value: number }>>([]);
   const [instanceCountData, setInstanceCountData] = useState<Array<{ name: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMetricsData = async () => {
       try {
-        const nodesResponse = await apiClient.getNodes();
-        if (nodesResponse.data) {
-          // Get analytics for each node
-          const analyticsPromises = nodesResponse.data.map(async (node: any) => {
-            try {
-              const response = await apiClient.getNodeAnalytics(node.id);
-              return { nodeId: node.id, nodeName: node.name, analytics: response.data };
-            } catch (error) {
-              return { nodeId: node.id, nodeName: node.name, analytics: null };
+        const response = await apiClient.getPoolAnalytics(undefined, 24);
+        if (response.data) {
+          // Process pool analytics data for charts
+          const groupedByHour = response.data.reduce((acc: Record<string, { pools: number; instances: number }>, item: PoolAnalytics) => {
+            const hour = new Date(item.timestamp).getHours();
+            const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+            
+            if (!acc[hourKey]) {
+              acc[hourKey] = { pools: 0, instances: 0 };
             }
-          });
+            acc[hourKey].pools += 1;
+            acc[hourKey].instances += item.current_instances;
+            return acc;
+          }, {});
 
-          const results = await Promise.all(analyticsPromises);
-          
-          // Process node analytics data for charts
-          const nodeChartData = results
-            .filter(result => result.analytics)
-            .map(result => ({
-              name: result.nodeName,
-              value: 1 // Each active node counts as 1
-            }));
+          // Convert to chart data format
+          const poolChartData = Object.entries(groupedByHour).map(([hour, data]) => ({
+            name: hour,
+            value: data.pools
+          }));
 
-          const instanceChartData = results
-            .filter(result => result.analytics)
-            .map(result => ({
-              name: result.nodeName,
-              value: result.analytics.current_instances || 0
-            }));
+          const instanceChartData = Object.entries(groupedByHour).map(([hour, data]) => ({
+            name: hour,
+            value: data.instances
+          }));
 
-          setNodeActivityData(nodeChartData);
+          setPoolActivityData(poolChartData);
           setInstanceCountData(instanceChartData);
         }
       } catch (error) {
         console.error("Error fetching metrics data:", error);
         // Set empty arrays if no data
-        setNodeActivityData([]);
+        setPoolActivityData([]);
         setInstanceCountData([]);
       } finally {
         setLoading(false);
@@ -81,8 +76,8 @@ export function MetricsChartsSection() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <MetricsChart
-        data={nodeActivityData}
-        title="Active Nodes"
+        data={poolActivityData}
+        title="Active Pools"
         color="#20B2AA"
       />
       <MetricsChart

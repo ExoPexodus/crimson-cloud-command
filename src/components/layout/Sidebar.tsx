@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { Home, Settings, Users, Activity, LogOut } from "lucide-react";
+import { Home, Database, Settings, Users, Activity, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -20,6 +20,11 @@ const items = [
     title: "Dashboard",
     url: "/",
     icon: Home,
+  },
+  {
+    title: "Instance Pools",
+    url: "/instance-pools",
+    icon: Database,
   },
   {
     title: "Nodes",
@@ -42,7 +47,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-dark-bg-light/40 p-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded bg-gradient-dark-teal flex items-center justify-center shadow-md">
-            <Activity size={16} className="text-white" />
+            <Database size={16} className="text-white" />
           </div>
           <span className="font-semibold text-lg">OCI Manager</span>
         </div>

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
+import InstancePools from "./pages/InstancePools";
 import Nodes from "./pages/Nodes";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +32,7 @@ function AuthenticatedApp() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/instance-pools" element={<InstancePools />} />
         <Route path="/nodes" element={<Nodes />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
