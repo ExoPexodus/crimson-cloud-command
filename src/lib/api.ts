@@ -1,3 +1,4 @@
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
@@ -19,22 +20,13 @@ interface SystemAnalytics {
   last_updated: string;
 }
 
-interface PoolAnalytics {
-  id: number;
-  pool_id: number;
-  node_id: number;
-  oracle_pool_id: string;
-  timestamp: string;
-  current_instances: number;
-  active_instances: number;
+interface NodeAnalytics {
   avg_cpu_utilization: number;
   avg_memory_utilization: number;
-  max_cpu_utilization: number | null;
-  max_memory_utilization: number | null;
-  pool_status: string;
-  is_active: boolean;
-  scaling_event: string | null;
-  scaling_reason: string | null;
+  current_instances: number;
+  active_instances: number;
+  max_instances: number;
+  oracle_pool_id: string;
 }
 
 interface NodeRegisterRequest {
@@ -133,20 +125,6 @@ class ApiClient {
     });
   }
 
-  async createNode(node: any): Promise<ApiResponse<any>> {
-    return this.request('/nodes', {
-      method: 'POST',
-      body: JSON.stringify(node),
-    });
-  }
-
-  async updateNode(nodeId: number, node: any): Promise<ApiResponse<any>> {
-    return this.request(`/nodes/${nodeId}`, {
-      method: 'PUT',
-      body: JSON.stringify(node),
-    });
-  }
-
   async deleteNode(nodeId: number): Promise<ApiResponse<void>> {
     return this.request(`/nodes/${nodeId}`, {
       method: 'DELETE',
@@ -154,7 +132,7 @@ class ApiClient {
   }
 
   // Node Configuration
-  async getNodeConfig(nodeId: number): Promise<ApiResponse<any>> {
+  async getNodeConfig(nodeId: number): Promise<ApiResponse<{ yaml_config: string }>> {
     return this.request(`/nodes/${nodeId}/config`);
   }
 
@@ -165,81 +143,14 @@ class ApiClient {
     });
   }
 
-  // Pools
-  async getPools(): Promise<ApiResponse<any[]>> {
-    return this.request('/pools');
-  }
-
-  async createPool(pool: any): Promise<ApiResponse<any>> {
-    return this.request('/pools', {
-      method: 'POST',
-      body: JSON.stringify(pool),
-    });
-  }
-
-  async updatePool(poolId: number, pool: any): Promise<ApiResponse<any>> {
-    return this.request(`/pools/${poolId}`, {
-      method: 'PUT',
-      body: JSON.stringify(pool),
-    });
-  }
-
-  async deletePool(poolId: number): Promise<ApiResponse<void>> {
-    return this.request(`/pools/${poolId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Metrics
-  async getMetrics(nodeId?: number): Promise<ApiResponse<any[]>> {
-    const endpoint = nodeId ? `/metrics?node_id=${nodeId}` : '/metrics';
-    return this.request(endpoint);
-  }
-
-  async createMetric(metric: any): Promise<ApiResponse<any>> {
-    return this.request('/metrics', {
-      method: 'POST',
-      body: JSON.stringify(metric),
-    });
-  }
-
-  // Schedules
-  async getSchedules(): Promise<ApiResponse<any[]>> {
-    return this.request('/schedules');
-  }
-
-  async createSchedule(schedule: any): Promise<ApiResponse<any>> {
-    return this.request('/schedules', {
-      method: 'POST',
-      body: JSON.stringify(schedule),
-    });
-  }
-
-  async updateSchedule(scheduleId: number, schedule: any): Promise<ApiResponse<any>> {
-    return this.request(`/schedules/${scheduleId}`, {
-      method: 'PUT',
-      body: JSON.stringify(schedule),
-    });
-  }
-
-  async deleteSchedule(scheduleId: number): Promise<ApiResponse<void>> {
-    return this.request(`/schedules/${scheduleId}`, {
-      method: 'DELETE',
-    });
+  // Node Analytics
+  async getNodeAnalytics(nodeId: number): Promise<ApiResponse<NodeAnalytics>> {
+    return this.request(`/nodes/${nodeId}/analytics`);
   }
 
   // Analytics
   async getSystemAnalytics(): Promise<ApiResponse<SystemAnalytics>> {
     return this.request('/analytics/system');
-  }
-
-  async getPoolAnalytics(nodeId?: number, hours: number = 24): Promise<ApiResponse<PoolAnalytics[]>> {
-    const params = new URLSearchParams();
-    if (nodeId) params.append('node_id', nodeId.toString());
-    params.append('hours', hours.toString());
-    
-    const endpoint = `/analytics/pools?${params.toString()}`;
-    return this.request(endpoint);
   }
 
   // Health check
