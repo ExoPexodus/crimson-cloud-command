@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -165,7 +164,7 @@ class Token(BaseModel):
 
 # Heartbeat schemas
 class PoolAnalyticsData(BaseModel):
-    pool_id: int
+    pool_id: Optional[int] = None  # Make this optional since nodes only know oracle_pool_id
     oracle_pool_id: str
     current_instances: int
     active_instances: int
