@@ -237,7 +237,7 @@ class AutoscalerNode:
         """Add pool analytics data to be sent with next heartbeat."""
         self.pool_analytics.append({
             'oracle_pool_id': pool_id,
-            'pool_id': 1,  # This would need to be mapped from config
+            # Remove the hardcoded pool_id - let the backend handle it
             **analytics_data
         })
 

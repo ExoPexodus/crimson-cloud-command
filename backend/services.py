@@ -223,14 +223,32 @@ class HeartbeatService:
         
         return response
 
-# ... keep existing code (AnalyticsService, PoolService, MetricService, ScheduleService classes remain unchanged)
-
 class AnalyticsService:
     @staticmethod
     def process_pool_analytics(db: Session, node_id: int, pool_analytics_list: List[PoolAnalyticsData]):
         for pool_data in pool_analytics_list:
+            # First, ensure the pool exists in the database
+            pool = db.query(Pool).filter(Pool.oracle_pool_id == pool_data.oracle_pool_id).first()
+            
+            if not pool:
+                # Create the pool if it doesn't exist
+                node = db.query(Node).filter(Node.id == node_id).first()
+                pool = Pool(
+                    node_id=node_id,
+                    oracle_pool_id=pool_data.oracle_pool_id,
+                    name=f"Pool-{pool_data.oracle_pool_id[-8:]}",  # Use last 8 chars of Oracle pool ID
+                    region=node.region if node else "unknown",
+                    min_instances=1,
+                    max_instances=pool_data.current_instances,
+                    current_instances=pool_data.current_instances,
+                    status=PoolStatus.HEALTHY
+                )
+                db.add(pool)
+                db.flush()  # Flush to get the ID
+            
+            # Now create the analytics record with the correct pool_id
             analytics = PoolAnalytics(
-                pool_id=pool_data.pool_id,
+                pool_id=pool.id,  # Use the actual pool ID from database
                 node_id=node_id,
                 oracle_pool_id=pool_data.oracle_pool_id,
                 current_instances=pool_data.current_instances,
@@ -335,6 +353,8 @@ class AnalyticsService:
             active_nodes=latest.active_nodes,
             last_updated=latest.timestamp
         )
+
+# ... keep existing code (PoolService, MetricService, ScheduleService classes remain unchanged)
 
 class PoolService:
     @staticmethod
