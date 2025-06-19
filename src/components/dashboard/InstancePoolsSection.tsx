@@ -4,80 +4,83 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
 
-interface Pool {
+interface Node {
   id: number;
   name: string;
-  oracle_pool_id: string;
-  current_instances: number;
-  max_instances: number;
-  status: "healthy" | "warning" | "error" | "inactive";
-  node: {
-    region: string;
-  };
+  region: string;
+  status: "active" | "inactive" | "error";
+  last_heartbeat?: string;
 }
 
-interface PoolAnalytics {
-  pool_id: number;
+interface NodeAnalytics {
   avg_cpu_utilization: number;
   avg_memory_utilization: number;
-  timestamp: string;
+  current_instances: number;
+  max_instances: number;
 }
 
 export function InstancePoolsSection() {
   const { toast } = useToast();
-  const [pools, setPools] = useState<Pool[]>([]);
-  const [poolMetrics, setPoolMetrics] = useState<Record<number, { cpu: number; memory: number }>>({});
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [nodeAnalytics, setNodeAnalytics] = useState<Record<number, NodeAnalytics>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPoolsData = async () => {
+    const fetchNodesData = async () => {
       try {
-        // Fetch pools
-        const poolsResponse = await apiClient.getPools();
-        if (poolsResponse.data) {
-          setPools(poolsResponse.data);
+        // Fetch nodes
+        const nodesResponse = await apiClient.getNodes();
+        if (nodesResponse.data) {
+          const activeNodes = nodesResponse.data.filter((node: Node) => 
+            node.status === 'active' || node.last_heartbeat
+          );
+          setNodes(activeNodes);
           
-          // Fetch recent analytics for each pool
-          const analyticsResponse = await apiClient.getPoolAnalytics(undefined, 1);
-          if (analyticsResponse.data) {
-            const metrics: Record<number, { cpu: number; memory: number }> = {};
-            analyticsResponse.data.forEach((analytics: PoolAnalytics) => {
-              metrics[analytics.pool_id] = {
-                cpu: analytics.avg_cpu_utilization,
-                memory: analytics.avg_memory_utilization
-              };
-            });
-            setPoolMetrics(metrics);
-          }
+          // Fetch analytics for each active node
+          const analyticsPromises = activeNodes.map(async (node: Node) => {
+            const analyticsResponse = await apiClient.getNodeAnalytics(node.id);
+            return { nodeId: node.id, analytics: analyticsResponse.data };
+          });
+          
+          const analyticsResults = await Promise.all(analyticsPromises);
+          const analyticsMap: Record<number, NodeAnalytics> = {};
+          
+          analyticsResults.forEach(({ nodeId, analytics }) => {
+            if (analytics) {
+              analyticsMap[nodeId] = analytics;
+            }
+          });
+          
+          setNodeAnalytics(analyticsMap);
         }
       } catch (error) {
-        console.error("Error fetching pools data:", error);
-        setPools([]);
-        setPoolMetrics({});
+        console.error("Error fetching nodes data:", error);
+        setNodes([]);
+        setNodeAnalytics({});
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPoolsData();
+    fetchNodesData();
     
     // Refresh every 30 seconds
-    const interval = setInterval(fetchPoolsData, 30000);
+    const interval = setInterval(fetchNodesData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleScaleAction = async (poolId: number, action: 'up' | 'down', poolName: string) => {
+  const handleScaleAction = async (nodeId: number, action: 'up' | 'down', nodeName: string) => {
     try {
-      // This would typically call an API to scale the pool
+      // This would typically call an API to scale the node's instance pool
       // For now, just show a toast
       toast({
         title: `Scale ${action === 'up' ? 'Up' : 'Down'}`,
-        description: `Scaling ${action} ${poolName}`,
+        description: `Scaling ${action} instances for ${nodeName}`,
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: `Failed to scale ${poolName}`,
+        description: `Failed to scale ${nodeName}`,
         variant: "destructive",
       });
     }
@@ -86,7 +89,7 @@ export function InstancePoolsSection() {
   if (loading) {
     return (
       <div>
-        <h2 className="text-lg font-medium mb-4">Recently Active Instance Pools</h2>
+        <h2 className="text-lg font-medium mb-4">Active Autoscaling Nodes</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-48 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
@@ -96,12 +99,12 @@ export function InstancePoolsSection() {
     );
   }
 
-  if (pools.length === 0) {
+  if (nodes.length === 0) {
     return (
       <div>
-        <h2 className="text-lg font-medium mb-4">Recently Active Instance Pools</h2>
+        <h2 className="text-lg font-medium mb-4">Active Autoscaling Nodes</h2>
         <div className="text-center py-12 text-muted-foreground">
-          <p>No instance pools found. Add some nodes to see pool data.</p>
+          <p>No active nodes found. Add some nodes to see their metrics.</p>
         </div>
       </div>
     );
@@ -109,22 +112,41 @@ export function InstancePoolsSection() {
 
   return (
     <div>
-      <h2 className="text-lg font-medium mb-4">Recently Active Instance Pools</h2>
+      <h2 className="text-lg font-medium mb-4">Active Autoscaling Nodes</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {pools.slice(0, 8).map((pool) => {
-          const metrics = poolMetrics[pool.id] || { cpu: 0, memory: 0 };
+        {nodes.slice(0, 8).map((node) => {
+          const analytics = nodeAnalytics[node.id] || { 
+            avg_cpu_utilization: 0, 
+            avg_memory_utilization: 0, 
+            current_instances: 0, 
+            max_instances: 0 
+          };
+          
+          const getNodeStatus = (): "healthy" | "warning" | "error" | "inactive" => {
+            if (!node.last_heartbeat) return "inactive";
+            
+            const lastHeartbeat = new Date(node.last_heartbeat);
+            const now = new Date();
+            const timeDiff = now.getTime() - lastHeartbeat.getTime();
+            const minutesDiff = timeDiff / (1000 * 60);
+            
+            if (minutesDiff > 5) return "error";
+            if (minutesDiff > 2) return "warning";
+            return "healthy";
+          };
+          
           return (
             <InstancePoolCard
-              key={pool.id}
-              name={pool.name}
-              instances={pool.current_instances}
-              maxInstances={pool.max_instances}
-              status={pool.status}
-              region={pool.node?.region || "Unknown"}
-              cpuUsage={Math.round(metrics.cpu)}
-              memoryUsage={Math.round(metrics.memory)}
-              onScaleUp={() => handleScaleAction(pool.id, 'up', pool.name)}
-              onScaleDown={() => handleScaleAction(pool.id, 'down', pool.name)}
+              key={node.id}
+              name={node.name}
+              instances={analytics.current_instances}
+              maxInstances={analytics.max_instances}
+              status={getNodeStatus()}
+              region={node.region}
+              cpuUsage={Math.round(analytics.avg_cpu_utilization)}
+              memoryUsage={Math.round(analytics.avg_memory_utilization)}
+              onScaleUp={() => handleScaleAction(node.id, 'up', node.name)}
+              onScaleDown={() => handleScaleAction(node.id, 'down', node.name)}
             />
           );
         })}
