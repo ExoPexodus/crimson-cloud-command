@@ -1,7 +1,7 @@
 
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from models import User, Node
+from models import User
 import logging
 
 # Set up password hashing
@@ -45,44 +45,14 @@ def create_default_admin(db: Session):
         db.rollback()
         return False
 
-def should_seed_mock_data(db: Session):
-    """
-    Check if we should seed mock data (only if no real nodes exist)
-    """
-    try:
-        # Check if we have any nodes with API keys (real nodes)
-        real_nodes = db.query(Node).filter(Node.api_key_hash.isnot(None)).count()
-        
-        # Check if we have any nodes at all
-        total_nodes = db.query(Node).count()
-        
-        # Only seed if we have no real nodes and less than 3 total nodes
-        return real_nodes == 0 and total_nodes < 3
-        
-    except Exception as e:
-        logging.error(f"Error checking if should seed mock data: {str(e)}")
-        return False
-
 def seed_initial_data(db: Session):
     """
-    Seed initial data only if needed
+    Seed initial data - only creates default admin user
     """
     try:
-        # Always ensure admin exists
+        # Only ensure admin exists
         admin_created = create_default_admin(db)
-        
-        # Only seed mock data if we don't have real data
-        if should_seed_mock_data(db):
-            logging.info("No real nodes detected, seeding mock data for demonstration...")
-            try:
-                from seed_mock_data import create_mock_data
-                create_mock_data()
-                logging.info("Mock data seeded successfully")
-            except Exception as e:
-                logging.error(f"Failed to seed mock data: {str(e)}")
-        else:
-            logging.info("Real nodes detected or sufficient data exists, skipping mock data seeding")
-        
+        logging.info("Initial data seeding completed - admin user ensured")
         return True
         
     except Exception as e:
