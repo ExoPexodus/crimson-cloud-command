@@ -225,6 +225,33 @@ class HeartbeatService:
 
 class AnalyticsService:
     @staticmethod
+    def get_node_analytics(db: Session, node_id: int) -> Dict[str, Any]:
+        """Get latest analytics for a specific node"""
+        # Get the latest pool analytics for this node
+        latest_analytics = db.query(PoolAnalytics).filter(
+            PoolAnalytics.node_id == node_id
+        ).order_by(desc(PoolAnalytics.timestamp)).first()
+        
+        if not latest_analytics:
+            return {
+                "avg_cpu_utilization": 0,
+                "avg_memory_utilization": 0,
+                "current_instances": 0,
+                "max_instances": 0
+            }
+        
+        # Get the associated pool to get max_instances
+        pool = db.query(Pool).filter(Pool.id == latest_analytics.pool_id).first()
+        max_instances = pool.max_instances if pool else latest_analytics.current_instances
+        
+        return {
+            "avg_cpu_utilization": latest_analytics.avg_cpu_utilization,
+            "avg_memory_utilization": latest_analytics.avg_memory_utilization,
+            "current_instances": latest_analytics.current_instances,
+            "max_instances": max_instances
+        }
+    
+    @staticmethod
     def process_pool_analytics(db: Session, node_id: int, pool_analytics_list: List[PoolAnalyticsData]):
         for pool_data in pool_analytics_list:
             # First, ensure the pool exists in the database
