@@ -50,14 +50,23 @@ const Nodes = () => {
 
   const fetchNodes = async () => {
     try {
+      console.log("Fetching nodes...");
       const response = await apiClient.getNodes();
       if (response.data) {
+        console.log("Nodes fetched:", response.data);
         setNodes(response.data);
         
         // Fetch analytics for each node
         const analyticsPromises = response.data.map(async (node: Node) => {
-          const analyticsResponse = await apiClient.getNodeAnalytics(node.id);
-          return { nodeId: node.id, analytics: analyticsResponse.data };
+          try {
+            console.log(`Fetching analytics for node ${node.id}...`);
+            const analyticsResponse = await apiClient.getNodeAnalytics(node.id);
+            console.log(`Analytics for node ${node.id}:`, analyticsResponse);
+            return { nodeId: node.id, analytics: analyticsResponse.data };
+          } catch (error) {
+            console.error(`Error fetching analytics for node ${node.id}:`, error);
+            return { nodeId: node.id, analytics: null };
+          }
         });
         
         const analyticsResults = await Promise.all(analyticsPromises);
@@ -69,6 +78,7 @@ const Nodes = () => {
           }
         });
         
+        console.log("Analytics map:", analyticsMap);
         setNodeAnalytics(analyticsMap);
       }
     } catch (error) {
@@ -99,15 +109,25 @@ const Nodes = () => {
   };
 
   const getNodeStatus = (node: Node): "healthy" | "warning" | "error" | "inactive" => {
-    if (!node.last_heartbeat) return "inactive";
+    console.log(`Calculating status for node ${node.id}:`, {
+      last_heartbeat: node.last_heartbeat,
+      status: node.status
+    });
+    
+    if (!node.last_heartbeat) {
+      console.log(`Node ${node.id} has no heartbeat, marking as inactive`);
+      return "inactive";
+    }
     
     const lastHeartbeat = new Date(node.last_heartbeat);
     const now = new Date();
     const timeDiff = now.getTime() - lastHeartbeat.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
     
-    if (minutesDiff > 5) return "error";
-    if (minutesDiff > 2) return "warning";
+    console.log(`Node ${node.id} last heartbeat was ${minutesDiff} minutes ago`);
+    
+    if (minutesDiff > 10) return "error";
+    if (minutesDiff > 5) return "warning";
     return "healthy";
   };
 
@@ -197,6 +217,8 @@ const Nodes = () => {
                     const status = getNodeStatus(node);
                     const analytics = nodeAnalytics[node.id];
                     
+                    console.log(`Rendering node ${node.id}:`, { status, analytics });
+                    
                     return (
                       <Card key={node.id} className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
                         <div className="p-4">
@@ -209,13 +231,13 @@ const Nodes = () => {
                           </div>
                           
                           {/* Instance Pool Metrics */}
-                          {analytics && (
-                            <div className="space-y-3 mb-4">
-                              <div className="flex items-center gap-2 text-sm font-medium">
-                                <Server size={16} className="text-dark-teal-400" />
-                                <span>Instance Pool Metrics</span>
-                              </div>
-                              
+                          <div className="space-y-3 mb-4">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Server size={16} className="text-dark-teal-400" />
+                              <span>Instance Pool Metrics</span>
+                            </div>
+                            
+                            {analytics ? (
                               <div className="space-y-2">
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
@@ -256,14 +278,52 @@ const Nodes = () => {
                                     <span className="text-muted-foreground">{analytics.current_instances}/{analytics.max_instances}</span>
                                   </div>
                                   <Progress 
-                                    value={(analytics.current_instances / analytics.max_instances) * 100} 
+                                    value={analytics.max_instances > 0 ? (analytics.current_instances / analytics.max_instances) * 100 : 0} 
                                     className="h-1.5" 
                                     indicatorClassName="bg-dark-teal-600" 
                                   />
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="text-xs text-muted-foreground text-center py-2">
+                                  No metrics available yet
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Cpu size={12} className="text-muted-foreground" />
+                                      <span>CPU Usage</span>
+                                    </div>
+                                    <span className="text-muted-foreground">--</span>
+                                  </div>
+                                  <Progress value={0} className="h-1.5" indicatorClassName="bg-gray-400" />
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <HardDrive size={12} className="text-muted-foreground" />
+                                      <span>Memory Usage</span>
+                                    </div>
+                                    <span className="text-muted-foreground">--</span>
+                                  </div>
+                                  <Progress value={0} className="h-1.5" indicatorClassName="bg-gray-400" />
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Server size={12} className="text-muted-foreground" />
+                                      <span>Instances</span>
+                                    </div>
+                                    <span className="text-muted-foreground">--/--</span>
+                                  </div>
+                                  <Progress value={0} className="h-1.5" indicatorClassName="bg-gray-400" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                           
                           <div className="space-y-2 text-sm border-t border-dark-bg-light/30 pt-3">
                             <div className="flex justify-between">
