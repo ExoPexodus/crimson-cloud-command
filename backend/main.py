@@ -25,7 +25,7 @@ from services import (
     NodeConfigurationService, HeartbeatService, AnalyticsService
 )
 from auth_middleware import get_node_from_api_key
-from seed_data import create_default_admin
+from seed_data import seed_initial_data
 from migration_manager import initialize_database
 
 # Configure logging
@@ -52,14 +52,15 @@ app.add_middleware(
 # Initialize database and run migrations with reset if needed
 logger.info("Initializing database...")
 try:
-    if initialize_database(reset_if_needed=True):
+    if initialize_database(force_reset=False):
         logger.info("Database initialization completed successfully")
         
         # Seed initial data
         logger.info("Running database seeding...")
         db = SessionLocal()
         try:
-            create_default_admin(db)
+            from seed_data import seed_initial_data
+            seed_initial_data(db)
             logger.info("Database seeding completed")
         except Exception as e:
             logger.error(f"Database seeding failed: {str(e)}")

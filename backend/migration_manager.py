@@ -103,20 +103,25 @@ def check_database_schema():
         return False
 
 def has_existing_data():
-    """Check if database has existing user data"""
+    """Check if database has existing user data - only after tables exist"""
     try:
+        # First check if basic tables exist
+        if not check_database_schema():
+            return False
+            
         engine = create_engine(DATABASE_URL)
         with engine.connect() as conn:
             # Check if we have any real nodes (with API keys)
             result = conn.execute(text("SELECT COUNT(*) FROM nodes WHERE api_key_hash IS NOT NULL"))
             node_count = result.scalar()
             
-            # Check if we have any users
-            result = conn.execute(text("SELECT COUNT(*) FROM users"))
+            # Check if we have any users besides the default admin
+            result = conn.execute(text("SELECT COUNT(*) FROM users WHERE email != 'admin@admin.com'"))
             user_count = result.scalar()
             
-            return node_count > 0 or user_count > 1  # More than just the default admin
-    except:
+            return node_count > 0 or user_count > 0
+    except Exception as e:
+        logger.error(f"Error checking existing data: {str(e)}")
         return False
 
 def initialize_database(force_reset=False):
@@ -131,44 +136,50 @@ def initialize_database(force_reset=False):
         
         logger.info("Database connection successful")
         
-        # Check if we have existing data
-        has_data = has_existing_data()
+        # Check if schema exists first
+        schema_exists = check_database_schema()
         
-        # Only reset if forced or if schema is completely broken and no data exists
-        if force_reset or (not check_database_schema() and not has_data):
-            if has_data and not force_reset:
-                logger.warning("Database has existing data but schema issues detected. Attempting migration instead of reset.")
-                # Try migration first to preserve data
-                if run_migrations():
-                    logger.info("Migration successful, data preserved")
-                    return True
-                else:
-                    logger.warning("Migration failed, but preserving data. Manual intervention may be needed.")
-                    return False
+        if not schema_exists:
+            logger.info("Database schema missing, initializing...")
+            
+            # Try migrations first for a clean setup
+            if run_migrations():
+                logger.info("Database initialized successfully via migrations")
             else:
-                logger.info("Resetting database (no existing data detected or force reset requested)")
-                
-                # Reset database completely
-                reset_database()
-                
-                # Try creating tables directly first
+                logger.info("Migration failed, creating tables directly...")
                 if create_tables_directly():
                     logger.info("Tables created directly, stamping with migration version...")
                     stamp_database()
                 else:
-                    # Fallback to migrations
-                    logger.info("Direct table creation failed, trying migrations...")
-                    if not run_migrations():
-                        logger.error("Migration failed, creating tables directly as fallback...")
-                        create_tables_directly()
-                        stamp_database()
+                    logger.error("Failed to create database schema")
+                    return False
         else:
-            if has_data:
-                logger.info("Database has existing data, preserving it")
+            logger.info("Database schema exists")
             
-            # Just run migrations to update schema if needed
-            if not run_migrations():
-                logger.warning("Migration failed, but database seems to be working")
+            # Check if we should preserve existing data
+            has_data = has_existing_data()
+            
+            if force_reset and has_data:
+                logger.warning("Force reset requested - will lose existing data!")
+                reset_database()
+                
+                # Recreate schema
+                if run_migrations():
+                    logger.info("Database reset and reinitialized via migrations")
+                else:
+                    create_tables_directly()
+                    stamp_database()
+                    logger.info("Database reset and reinitialized directly")
+            elif has_data:
+                logger.info("Existing data detected, preserving it")
+                # Just run migrations to update schema if needed
+                if not run_migrations():
+                    logger.warning("Migration failed, but database seems to be working")
+            else:
+                logger.info("No existing data detected")
+                # Run migrations to ensure schema is up to date
+                if not run_migrations():
+                    logger.warning("Migration failed, but proceeding")
         
         # Final verification
         if check_database_schema():
