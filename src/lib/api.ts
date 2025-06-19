@@ -1,3 +1,4 @@
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
@@ -49,6 +50,13 @@ interface NodeRegisterResponse {
   api_key: string;
   name: string;
   region: string;
+}
+
+interface NodeAnalytics {
+  avg_cpu_utilization: number;
+  avg_memory_utilization: number;
+  current_instances: number;
+  max_instances: number;
 }
 
 class ApiClient {
@@ -165,29 +173,9 @@ class ApiClient {
     });
   }
 
-  // Pools
-  async getPools(): Promise<ApiResponse<any[]>> {
-    return this.request('/pools');
-  }
-
-  async createPool(pool: any): Promise<ApiResponse<any>> {
-    return this.request('/pools', {
-      method: 'POST',
-      body: JSON.stringify(pool),
-    });
-  }
-
-  async updatePool(poolId: number, pool: any): Promise<ApiResponse<any>> {
-    return this.request(`/pools/${poolId}`, {
-      method: 'PUT',
-      body: JSON.stringify(pool),
-    });
-  }
-
-  async deletePool(poolId: number): Promise<ApiResponse<void>> {
-    return this.request(`/pools/${poolId}`, {
-      method: 'DELETE',
-    });
+  // Node Analytics
+  async getNodeAnalytics(nodeId: number): Promise<ApiResponse<NodeAnalytics>> {
+    return this.request(`/nodes/${nodeId}/analytics`);
   }
 
   // Metrics

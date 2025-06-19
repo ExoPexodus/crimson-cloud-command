@@ -5,7 +5,8 @@ import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, RefreshCw, Settings, Activity, Trash2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Plus, RefreshCw, Settings, Activity, Server, Cpu, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
@@ -22,9 +23,17 @@ interface Node {
   api_key_hash?: string;
 }
 
+interface NodeAnalytics {
+  avg_cpu_utilization: number;
+  avg_memory_utilization: number;
+  current_instances: number;
+  max_instances: number;
+}
+
 const Nodes = () => {
   const { toast } = useToast();
   const [nodes, setNodes] = useState<Node[]>([]);
+  const [nodeAnalytics, setNodeAnalytics] = useState<Record<number, NodeAnalytics>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
@@ -44,6 +53,23 @@ const Nodes = () => {
       const response = await apiClient.getNodes();
       if (response.data) {
         setNodes(response.data);
+        
+        // Fetch analytics for each node
+        const analyticsPromises = response.data.map(async (node: Node) => {
+          const analyticsResponse = await apiClient.getNodeAnalytics(node.id);
+          return { nodeId: node.id, analytics: analyticsResponse.data };
+        });
+        
+        const analyticsResults = await Promise.all(analyticsPromises);
+        const analyticsMap: Record<number, NodeAnalytics> = {};
+        
+        analyticsResults.forEach(({ nodeId, analytics }) => {
+          if (analytics) {
+            analyticsMap[nodeId] = analytics;
+          }
+        });
+        
+        setNodeAnalytics(analyticsMap);
       }
     } catch (error) {
       console.error("Error fetching nodes:", error);
@@ -141,7 +167,7 @@ const Nodes = () => {
               {loading && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-48 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
+                    <div key={i} className="h-64 bg-dark-bg-light/20 rounded-lg animate-pulse"></div>
                   ))}
                 </div>
               )}
@@ -169,6 +195,8 @@ const Nodes = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {nodes.map((node) => {
                     const status = getNodeStatus(node);
+                    const analytics = nodeAnalytics[node.id];
+                    
                     return (
                       <Card key={node.id} className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
                         <div className="p-4">
@@ -180,7 +208,64 @@ const Nodes = () => {
                             <StatusIndicator status={status} showLabel={false} />
                           </div>
                           
-                          <div className="space-y-2 text-sm">
+                          {/* Instance Pool Metrics */}
+                          {analytics && (
+                            <div className="space-y-3 mb-4">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <Server size={16} className="text-dark-teal-400" />
+                                <span>Instance Pool Metrics</span>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Cpu size={12} className="text-dark-teal-400" />
+                                      <span>CPU Usage</span>
+                                    </div>
+                                    <span className="text-muted-foreground">{Math.round(analytics.avg_cpu_utilization)}%</span>
+                                  </div>
+                                  <Progress 
+                                    value={analytics.avg_cpu_utilization} 
+                                    className="h-1.5" 
+                                    indicatorClassName="bg-dark-teal-500" 
+                                  />
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <HardDrive size={12} className="text-dark-teal-400" />
+                                      <span>Memory Usage</span>
+                                    </div>
+                                    <span className="text-muted-foreground">{Math.round(analytics.avg_memory_utilization)}%</span>
+                                  </div>
+                                  <Progress 
+                                    value={analytics.avg_memory_utilization} 
+                                    className="h-1.5" 
+                                    indicatorClassName="bg-dark-teal-400" 
+                                  />
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Server size={12} className="text-dark-teal-400" />
+                                      <span>Instances</span>
+                                    </div>
+                                    <span className="text-muted-foreground">{analytics.current_instances}/{analytics.max_instances}</span>
+                                  </div>
+                                  <Progress 
+                                    value={(analytics.current_instances / analytics.max_instances) * 100} 
+                                    className="h-1.5" 
+                                    indicatorClassName="bg-dark-teal-600" 
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="space-y-2 text-sm border-t border-dark-bg-light/30 pt-3">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Status:</span>
                               <StatusIndicator status={status} />
