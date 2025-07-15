@@ -134,6 +134,7 @@ const Nodes = () => {
   const formatLastSeen = (lastHeartbeat?: string) => {
     if (!lastHeartbeat) return "Never";
     
+    // Parse the UTC timestamp from the backend
     const lastSeen = new Date(lastHeartbeat);
     const now = new Date();
     const timeDiff = now.getTime() - lastSeen.getTime();

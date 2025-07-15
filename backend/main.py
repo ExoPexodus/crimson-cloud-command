@@ -161,6 +161,21 @@ async def update_node(node_id: int, node: NodeUpdate, db: Session = Depends(get_
         logger.error(f"Update node error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update node: {str(e)}")
 
+@app.get("/nodes/{node_id}/analytics")
+async def get_node_analytics(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Get analytics for a specific node"""
+    try:
+        node = NodeService.get_node(db, node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        return AnalyticsService.get_node_analytics(db, node_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get node analytics error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get node analytics: {str(e)}")
+
 @app.delete("/nodes/{node_id}")
 async def delete_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
