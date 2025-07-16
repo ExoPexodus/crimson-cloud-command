@@ -119,7 +119,7 @@ const Nodes = () => {
       return "inactive";
     }
     
-    const lastHeartbeat = new Date(node.last_heartbeat);
+    const lastHeartbeat = new Date(node.last_heartbeat + 'Z'); // Ensure it's treated as UTC
     const now = new Date();
     const timeDiff = now.getTime() - lastHeartbeat.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
@@ -134,8 +134,8 @@ const Nodes = () => {
   const formatLastSeen = (lastHeartbeat?: string) => {
     if (!lastHeartbeat) return "Never";
     
-    // Parse the UTC timestamp from the backend
-    const lastSeen = new Date(lastHeartbeat);
+    // Parse the UTC timestamp from the backend and convert to local time
+    const lastSeen = new Date(lastHeartbeat + 'Z'); // Ensure it's treated as UTC
     const now = new Date();
     const timeDiff = now.getTime() - lastSeen.getTime();
     const minutesDiff = Math.floor(timeDiff / (1000 * 60));

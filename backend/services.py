@@ -240,9 +240,23 @@ class AnalyticsService:
                 "max_instances": 0
             }
         
-        # Get the associated pool to get max_instances
-        pool = db.query(Pool).filter(Pool.id == latest_analytics.pool_id).first()
-        max_instances = pool.max_instances if pool else latest_analytics.current_instances
+        # Get max_instances from node configuration instead of pool
+        node_config = db.query(NodeConfiguration).filter(
+            NodeConfiguration.node_id == node_id,
+            NodeConfiguration.is_active == True
+        ).first()
+        
+        max_instances = latest_analytics.current_instances  # fallback
+        if node_config:
+            try:
+                import yaml
+                config_data = yaml.safe_load(node_config.yaml_config)
+                if 'pools' in config_data and len(config_data['pools']) > 0:
+                    pool_config = config_data['pools'][0]  # Get first pool config
+                    if 'scaling_limits' in pool_config:
+                        max_instances = pool_config['scaling_limits'].get('max', latest_analytics.current_instances)
+            except Exception:
+                pass  # Use fallback if config parsing fails
         
         return {
             "avg_cpu_utilization": latest_analytics.avg_cpu_utilization,
@@ -272,6 +286,11 @@ class AnalyticsService:
                 )
                 db.add(pool)
                 db.flush()  # Flush to get the ID
+            
+            # Update pool's current instances if it has changed
+            if pool.current_instances != pool_data.current_instances:
+                pool.current_instances = pool_data.current_instances
+                db.add(pool)
             
             # Now create the analytics record with the correct pool_id
             analytics = PoolAnalytics(
