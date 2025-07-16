@@ -213,9 +213,11 @@ async def get_node_config(
         elif authorization and authorization.startswith("Bearer "):
             try:
                 token = authorization.replace("Bearer ", "")
+                logger.info(f"Attempting to verify token for node config: {token[:20]}...")
                 current_user = AuthService.verify_token(token, db)
+                logger.info(f"Token verification result: {current_user}")
                 if not current_user:
-                    raise HTTPException(status_code=401, detail="Invalid token")
+                    raise HTTPException(status_code=401, detail="Invalid or expired token")
                 
                 node = NodeService.get_node(db, node_id)
                 if not node:
