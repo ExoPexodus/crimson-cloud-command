@@ -218,8 +218,15 @@ async def get_node_config(
                 # Try to decode token to see what's inside
                 try:
                     from jose import jwt
+                    import time
                     payload = jwt.decode(token, verify=False)  # Don't verify to see content
                     logger.info(f"Token payload: {payload}")
+                    
+                    # Check if token is expired
+                    exp = payload.get('exp')
+                    current_time = time.time()
+                    logger.info(f"Token expiry: {exp}, Current time: {current_time}, Expired: {exp < current_time}")
+                    
                 except Exception as e:
                     logger.error(f"Failed to decode token: {e}")
                 
