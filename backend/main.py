@@ -212,9 +212,9 @@ async def get_node_config(
         # Fall back to user authentication (for web app)
         elif authorization and authorization.startswith("Bearer "):
             try:
-                from services import AuthService
+                from auth_middleware import verify_token
                 token = authorization.replace("Bearer ", "")
-                current_user = AuthService.verify_token(token, db)
+                current_user = verify_token(token, db)
                 if not current_user:
                     raise HTTPException(status_code=401, detail="Invalid token")
                 
