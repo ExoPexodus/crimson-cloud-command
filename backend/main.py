@@ -176,6 +176,58 @@ async def get_node_analytics(node_id: int, db: Session = Depends(get_db), curren
         logger.error(f"Get node analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get node analytics: {str(e)}")
 
+@app.get("/nodes/{node_id}/config")
+async def get_node_config(
+    node_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get the current configuration for a node"""
+    try:
+        node = NodeService.get_node(db, node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+            
+        config = NodeConfigurationService.get_node_config(db, node_id)
+        if not config:
+            raise HTTPException(status_code=404, detail="Configuration not found")
+        return {"yaml_config": config.yaml_config}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching config for node {node_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch configuration")
+
+@app.put("/nodes/{node_id}/config")
+async def update_node_config(
+    node_id: int,
+    config_data: NodeConfigurationCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Update the configuration for a node"""
+    try:
+        # Verify node exists
+        node = NodeService.get_node(db, node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        # Update configuration
+        updated_config = NodeConfigurationService.update_node_config(
+            db, node_id, config_data.yaml_config
+        )
+        
+        return {
+            "status": "success",
+            "message": "Configuration updated successfully",
+            "config_hash": updated_config.config_hash
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating config for node {node_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update configuration")
+
 @app.delete("/nodes/{node_id}")
 async def delete_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
@@ -189,15 +241,14 @@ async def delete_node(node_id: int, db: Session = Depends(get_db), current_user 
         logger.error(f"Delete node error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete node: {str(e)}")
 
-# Node Configuration endpoints - Updated to support both user auth and API key auth
-@app.get("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
-async def get_node_config(node_id: int, db: Session = Depends(get_db)):
-    """Get current configuration for a node - used by autoscaling nodes with API key or users with Bearer token"""
+# Node Configuration endpoint for autoscaling nodes (API key auth)
+@app.get("/nodes/{node_id}/config/fetch", response_model=NodeConfigurationResponse)
+async def fetch_node_config(node_id: int, node: models.Node = Depends(get_node_from_api_key), db: Session = Depends(get_db)):
+    """Get current configuration for a node - used by autoscaling nodes with API key"""
     try:
-        # First check if the node exists
-        node = NodeService.get_node(db, node_id)
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
+        # Verify the node_id matches the authenticated node
+        if node.id != node_id:
+            raise HTTPException(status_code=403, detail="Node ID mismatch")
         
         config = NodeConfigurationService.get_node_config(db, node_id)
         if not config:
@@ -209,8 +260,7 @@ async def get_node_config(node_id: int, db: Session = Depends(get_db)):
                 yaml_config="# No configuration set yet\n",
                 config_hash="",
                 is_active=False,
-                created_at="1970-01-01T00:00:00Z",
-                updated_at="1970-01-01T00:00:00Z"
+                created_at="1970-01-01T00:00:00Z"
             )
         return config
     except HTTPException:
@@ -218,55 +268,6 @@ async def get_node_config(node_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Get node config error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get node config: {str(e)}")
-
-@app.put("/nodes/{node_id}/config", response_model=NodeConfigurationResponse)
-async def update_node_config(
-    node_id: int, 
-    config: NodeConfigurationCreate, 
-    db: Session = Depends(get_db),
-    # Try API key auth first, then fall back to user auth
-    node: Optional[models.Node] = Depends(lambda: None),
-    current_user = Depends(lambda: None)
-):
-    """Update node configuration - supports both API key auth (for nodes) and Bearer token auth (for users)"""
-    try:
-        # Try to get the node using API key authentication
-        try:
-            from auth_middleware import get_node_from_api_key
-            from fastapi import Header
-            
-            # This is a bit of a hack to check for API key auth
-            # In a real implementation, you'd want a more elegant solution
-            authenticated_node = None
-            try:
-                # Check if we can authenticate with API key
-                authenticated_node = await get_node_from_api_key(db=db)
-                if authenticated_node and authenticated_node.id == node_id:
-                    # API key auth successful and matches node_id
-                    pass
-                else:
-                    authenticated_node = None
-            except:
-                authenticated_node = None
-            
-            # If no API key auth, try user auth
-            if not authenticated_node:
-                try:
-                    user = await get_current_user(db=db)
-                    if not user:
-                        raise HTTPException(status_code=401, detail="Authentication required")
-                except:
-                    raise HTTPException(status_code=401, detail="Authentication required")
-        except Exception as auth_error:
-            logger.error(f"Authentication error: {str(auth_error)}")
-            raise HTTPException(status_code=401, detail="Authentication required")
-        
-        return NodeConfigurationService.update_node_config(db, node_id, config.yaml_config)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Update node config error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update node config: {str(e)}")
 
 # Alternative approach: Create separate endpoints for API key auth
 @app.put("/nodes/{node_id}/config/push", response_model=NodeConfigurationResponse)

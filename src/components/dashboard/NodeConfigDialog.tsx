@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Copy, Settings, Trash2, AlertTriangle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Copy, Settings, Trash2, AlertTriangle, Edit, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 
@@ -35,6 +36,80 @@ interface NodeConfigDialogProps {
 export function NodeConfigDialog({ isOpen, onClose, node, onNodeDeleted }: NodeConfigDialogProps) {
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [currentConfig, setCurrentConfig] = useState("");
+  const [editedConfig, setEditedConfig] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch current configuration when dialog opens
+  useEffect(() => {
+    if (isOpen && node) {
+      fetchCurrentConfig();
+    }
+  }, [isOpen, node]);
+
+  const fetchCurrentConfig = async () => {
+    if (!node) return;
+    
+    setLoading(true);
+    try {
+      const response = await apiClient.getNodeConfig(node.id);
+      if (response.data) {
+        setCurrentConfig(response.data.yaml_config);
+        setEditedConfig(response.data.yaml_config);
+      } else {
+        // If no config exists, use template
+        const template = generateConfigTemplate();
+        setCurrentConfig(template);
+        setEditedConfig(template);
+      }
+    } catch (error) {
+      console.error('Failed to fetch config:', error);
+      // Fallback to template
+      const template = generateConfigTemplate();
+      setCurrentConfig(template);
+      setEditedConfig(template);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    if (!node) return;
+
+    setSaving(true);
+    try {
+      const response = await apiClient.updateNodeConfig(node.id, editedConfig);
+      if (response.error) {
+        toast({
+          title: "Save Failed",
+          description: response.error,
+          variant: "destructive"
+        });
+      } else {
+        setCurrentConfig(editedConfig);
+        setEditMode(false);
+        toast({
+          title: "Configuration Updated",
+          description: "The node configuration has been saved successfully",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "An unexpected error occurred while saving",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditedConfig(currentConfig);
+    setEditMode(false);
+  };
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -199,24 +274,83 @@ pools:
             </div>
           </Card>
 
-          {/* Configuration Template */}
+          {/* Node Configuration */}
           <Card className="p-4 glass-card">
-            <h3 className="font-semibold mb-3">Configuration Template</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Use this template for your node's <code>config.yaml</code> file:
-            </p>
-            <div className="bg-dark-bg/50 p-3 rounded text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
-              {generateConfigTemplate()}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Node Configuration</h3>
+              <div className="flex gap-2">
+                {!editMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditMode(true)}
+                    disabled={loading}
+                  >
+                    <Edit size={14} className="mr-2" />
+                    Edit Config
+                  </Button>
+                )}
+                {editMode && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={saving}
+                    >
+                      <X size={14} className="mr-2" />
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveConfig}
+                      disabled={saving}
+                    >
+                      <Save size={14} className="mr-2" />
+                      {saving ? "Saving..." : "Save"}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => copyToClipboard(generateConfigTemplate(), "Configuration Template")}
-            >
-              <Copy size={14} className="mr-2" />
-              Copy Configuration Template
-            </Button>
+            
+            <p className="text-sm text-muted-foreground mb-3">
+              {editMode 
+                ? "Edit the YAML configuration for this autoscaling node:"
+                : "Current YAML configuration for this autoscaling node:"
+              }
+            </p>
+
+            {loading ? (
+              <div className="bg-dark-bg/50 p-3 rounded min-h-[200px] flex items-center justify-center">
+                <span className="text-muted-foreground">Loading configuration...</span>
+              </div>
+            ) : editMode ? (
+              <Textarea
+                value={editedConfig}
+                onChange={(e) => setEditedConfig(e.target.value)}
+                className="font-mono text-xs min-h-[300px] bg-dark-bg/50"
+                placeholder="Enter YAML configuration..."
+              />
+            ) : (
+              <div className="bg-dark-bg/50 p-3 rounded text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
+                {currentConfig || "No configuration available"}
+              </div>
+            )}
+
+            {!editMode && (
+              <div className="flex gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(currentConfig, "Configuration")}
+                  disabled={!currentConfig}
+                >
+                  <Copy size={14} className="mr-2" />
+                  Copy Configuration
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* Danger Zone */}
