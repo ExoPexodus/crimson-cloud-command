@@ -48,7 +48,19 @@ class AuthService:
     @staticmethod
     def verify_token(token: str, db: Session):
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            # Decode without verification first to manually check expiration with UTC
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+            
+            # Manually validate expiration using UTC time
+            exp = payload.get("exp")
+            if exp is None:
+                return None
+            
+            # Check if token is expired using UTC time
+            current_utc_timestamp = datetime.utcnow().timestamp()
+            if exp < current_utc_timestamp:
+                return None
+            
             email: str = payload.get("sub")
             if email is None:
                 return None
