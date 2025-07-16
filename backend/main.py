@@ -214,6 +214,15 @@ async def get_node_config(
             try:
                 token = authorization.replace("Bearer ", "")
                 logger.info(f"Attempting to verify token for node config: {token[:20]}...")
+                
+                # Try to decode token to see what's inside
+                try:
+                    from jose import jwt
+                    payload = jwt.decode(token, verify=False)  # Don't verify to see content
+                    logger.info(f"Token payload: {payload}")
+                except Exception as e:
+                    logger.error(f"Failed to decode token: {e}")
+                
                 current_user = AuthService.verify_token(token, db)
                 logger.info(f"Token verification result: {current_user}")
                 if not current_user:
