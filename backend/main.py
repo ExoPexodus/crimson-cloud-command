@@ -30,9 +30,18 @@ from seed_data import seed_initial_data
 from migration_manager import initialize_database
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, 
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Configure uvicorn logging
+logging.getLogger("uvicorn").setLevel(logging.DEBUG)
+logging.getLogger("uvicorn.access").setLevel(logging.DEBUG)
 
 app = FastAPI(
     title="Oracle Cloud Autoscaling Management API",
