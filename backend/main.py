@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Form
+from fastapi import FastAPI, Depends, HTTPException, status, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 import uvicorn
 import logging
 
@@ -180,18 +181,60 @@ async def get_node_analytics(node_id: int, db: Session = Depends(get_db), curren
 async def get_node_config(
     node_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    authorization: Optional[str] = Header(None)
 ):
-    """Get the current configuration for a node"""
+    """Get the current configuration for a node - supports both API key and user authentication"""
     try:
-        node = NodeService.get_node(db, node_id)
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
+        # Try API key authentication first (for autoscaling nodes)
+        if x_api_key:
+            try:
+                from auth_middleware import APIKeyAuth
+                hashed_key = APIKeyAuth.hash_api_key(x_api_key)
+                node = db.query(models.Node).filter(models.Node.api_key_hash == hashed_key).first()
+                
+                if not node:
+                    raise HTTPException(status_code=401, detail="Invalid API key")
+                
+                if node.id != node_id:
+                    raise HTTPException(status_code=403, detail="Node ID mismatch")
+                
+                config = NodeConfigurationService.get_node_config(db, node_id)
+                if not config:
+                    return {"yaml_config": "# No configuration set yet\n"}
+                return {"yaml_config": config.yaml_config}
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"API key auth failed: {str(e)}")
+                raise HTTPException(status_code=403, detail="Invalid API key")
+        
+        # Fall back to user authentication (for web app)
+        elif authorization and authorization.startswith("Bearer "):
+            try:
+                from services import AuthService
+                token = authorization.replace("Bearer ", "")
+                current_user = AuthService.verify_token(token, db)
+                if not current_user:
+                    raise HTTPException(status_code=401, detail="Invalid token")
+                
+                node = NodeService.get_node(db, node_id)
+                if not node:
+                    raise HTTPException(status_code=404, detail="Node not found")
+                    
+                config = NodeConfigurationService.get_node_config(db, node_id)
+                if not config:
+                    return {"yaml_config": "# No configuration set yet\n"}
+                return {"yaml_config": config.yaml_config}
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Bearer token auth failed: {str(e)}")
+                raise HTTPException(status_code=401, detail="Invalid authentication")
+        
+        else:
+            raise HTTPException(status_code=401, detail="Authentication required")
             
-        config = NodeConfigurationService.get_node_config(db, node_id)
-        if not config:
-            raise HTTPException(status_code=404, detail="Configuration not found")
-        return {"yaml_config": config.yaml_config}
     except HTTPException:
         raise
     except Exception as e:
