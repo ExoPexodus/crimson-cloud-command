@@ -175,7 +175,7 @@ const Nodes = () => {
                     {refreshing ? 'Refreshing...' : 'Refresh'}
                   </Button>
                   <Button 
-                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white text-sm"
+                    className="bg-dark-blue-600 hover:bg-dark-blue-700 text-white text-sm"
                     onClick={handleCreateNode}
                   >
                     <Plus size={16} className="mr-2" />
@@ -202,7 +202,7 @@ const Nodes = () => {
                     Connect your first autoscaling node to start managing your Oracle Cloud instances.
                   </p>
                   <Button 
-                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
+                    className="bg-dark-blue-600 hover:bg-dark-blue-700 text-white"
                     onClick={handleCreateNode}
                   >
                     <Plus size={16} className="mr-2" />
@@ -221,7 +221,7 @@ const Nodes = () => {
                     console.log(`Rendering node ${node.id}:`, { status, analytics });
                     
                     return (
-                      <Card key={node.id} className="glass-card overflow-hidden hover:shadow-dark-teal-900/10 transition-all duration-300">
+                      <Card key={node.id} className="glass-card overflow-hidden hover:shadow-dark-blue-900/10 transition-all duration-300">
                         <div className="p-4">
                           <div className="flex items-start justify-between mb-3">
                             <div>
@@ -234,7 +234,7 @@ const Nodes = () => {
                           {/* Instance Pool Metrics */}
                           <div className="space-y-3 mb-4">
                             <div className="flex items-center gap-2 text-sm font-medium">
-                              <Server size={16} className="text-dark-teal-400" />
+                              <Server size={16} className="text-dark-blue-400" />
                               <span>Instance Pool Metrics</span>
                             </div>
                             
@@ -243,7 +243,7 @@ const Nodes = () => {
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-1">
-                                      <Cpu size={12} className="text-dark-teal-400" />
+                                      <Cpu size={12} className="text-dark-blue-400" />
                                       <span>CPU Usage</span>
                                     </div>
                                     <span className="text-muted-foreground">{Math.round(analytics.avg_cpu_utilization)}%</span>
@@ -251,14 +251,14 @@ const Nodes = () => {
                                   <Progress 
                                     value={analytics.avg_cpu_utilization} 
                                     className="h-1.5" 
-                                    indicatorClassName="bg-dark-teal-500" 
+                                    indicatorClassName="bg-dark-blue-500" 
                                   />
                                 </div>
                                 
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-1">
-                                      <HardDrive size={12} className="text-dark-teal-400" />
+                                      <HardDrive size={12} className="text-dark-blue-400" />
                                       <span>Memory Usage</span>
                                     </div>
                                     <span className="text-muted-foreground">{Math.round(analytics.avg_memory_utilization)}%</span>
@@ -266,14 +266,14 @@ const Nodes = () => {
                                   <Progress 
                                     value={analytics.avg_memory_utilization} 
                                     className="h-1.5" 
-                                    indicatorClassName="bg-dark-teal-400" 
+                                    indicatorClassName="bg-dark-blue-400" 
                                   />
                                 </div>
                                 
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-1">
-                                      <Server size={12} className="text-dark-teal-400" />
+                                      <Server size={12} className="text-dark-blue-400" />
                                       <span>Instances</span>
                                     </div>
                                     <span className="text-muted-foreground">{analytics.current_instances}/{analytics.max_instances}</span>
@@ -281,7 +281,7 @@ const Nodes = () => {
                                   <Progress 
                                     value={analytics.max_instances > 0 ? (analytics.current_instances / analytics.max_instances) * 100 : 0} 
                                     className="h-1.5" 
-                                    indicatorClassName="bg-dark-teal-600" 
+                                    indicatorClassName="bg-dark-blue-600" 
                                   />
                                 </div>
                               </div>
@@ -345,7 +345,7 @@ const Nodes = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full border-dark-teal-600 text-dark-teal-400 hover:bg-dark-teal-800/20"
+                              className="w-full border-dark-blue-600 text-dark-blue-400 hover:bg-dark-blue-800/20"
                               onClick={() => handleConfigureNode(node)}
                             >
                               <Settings size={14} className="mr-2" />

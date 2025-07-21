@@ -29,11 +29,11 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
               {loading ? "..." : analytics?.total_active_pools || 0}
             </h3>
           </div>
-          <div className="h-10 w-10 rounded-full bg-dark-teal-900/30 flex items-center justify-center">
-            <Server size={20} className="text-dark-teal-400" />
+          <div className="h-10 w-10 rounded-full bg-dark-blue-900/30 flex items-center justify-center">
+            <Server size={20} className="text-dark-blue-400" />
           </div>
         </div>
-        <div className="text-xs text-dark-teal-300 mt-2">
+        <div className="text-xs text-dark-blue-300 mt-2">
           Max: {analytics?.max_active_pools_24h || 0} pools today
         </div>
       </Card>
@@ -46,11 +46,11 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
               {loading ? "..." : analytics?.peak_instances_24h || 0}
             </h3>
           </div>
-          <div className="h-10 w-10 rounded-full bg-dark-teal-900/30 flex items-center justify-center">
-            <Activity size={20} className="text-dark-teal-400" />
+          <div className="h-10 w-10 rounded-full bg-dark-blue-900/30 flex items-center justify-center">
+            <Activity size={20} className="text-dark-blue-400" />
           </div>
         </div>
-        <div className="text-xs text-dark-teal-300 mt-2">
+        <div className="text-xs text-dark-blue-300 mt-2">
           Avg CPU: {analytics?.avg_system_cpu?.toFixed(1) || 0}%
         </div>
       </Card>
@@ -63,8 +63,8 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
               {loading ? "..." : analytics?.total_current_instances || 0}
             </h3>
           </div>
-          <div className="h-10 w-10 rounded-full bg-dark-teal-900/30 flex items-center justify-center">
-            <Server size={20} className="text-dark-teal-400" />
+          <div className="h-10 w-10 rounded-full bg-dark-blue-900/30 flex items-center justify-center">
+            <Server size={20} className="text-dark-blue-400" />
           </div>
         </div>
         <div className="text-xs text-muted-foreground mt-2">

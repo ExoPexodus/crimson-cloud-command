@@ -142,7 +142,7 @@ pools:
               <>Register New Autoscaling Node</>
             ) : (
               <>
-                <CheckCircle className="w-5 h-5 text-dark-teal-500" />
+                <CheckCircle className="w-5 h-5 text-dark-blue-500" />
                 Node Registered Successfully!
               </>
             )}
@@ -205,7 +205,7 @@ pools:
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} className="bg-dark-teal-600 hover:bg-dark-teal-700">
+              <Button type="submit" disabled={loading} className="bg-dark-blue-600 hover:bg-dark-blue-700">
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Register Node
               </Button>
@@ -228,8 +228,8 @@ pools:
               </div>
             </Card>
 
-            <Card className="p-4 glass-card border-dark-teal-600/30">
-              <h3 className="font-semibold mb-3 text-dark-teal-400">Node Credentials</h3>
+            <Card className="p-4 glass-card border-dark-blue-600/30">
+              <h3 className="font-semibold mb-3 text-dark-blue-400">Node Credentials</h3>
               <div className="space-y-3">
                 <div>
                   <Label className="text-sm text-muted-foreground">Node ID</Label>
@@ -280,7 +280,7 @@ pools:
             </Card>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button onClick={handleClose} className="bg-dark-teal-600 hover:bg-dark-teal-700">
+              <Button onClick={handleClose} className="bg-dark-blue-600 hover:bg-dark-blue-700">
                 Done - I've Saved the Credentials
               </Button>
             </div>

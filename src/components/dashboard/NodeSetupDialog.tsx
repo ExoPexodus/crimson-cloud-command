@@ -92,7 +92,7 @@ pools:
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-dark-teal-500" />
+              <CheckCircle className="w-5 h-5 text-dark-blue-500" />
               Connect Your Autoscaling Node
             </DialogTitle>
             <DialogDescription>
@@ -107,15 +107,15 @@ pools:
             </TabsList>
 
             <TabsContent value="register" className="space-y-4 mt-6">
-              <Card className="p-6 glass-card border-dark-teal-600/30">
+              <Card className="p-6 glass-card border-dark-blue-600/30">
                 <div className="text-center space-y-4">
-                  <h3 className="text-xl font-semibold text-dark-teal-400">Quick Registration</h3>
+                  <h3 className="text-xl font-semibold text-dark-blue-400">Quick Registration</h3>
                   <p className="text-muted-foreground">
                     Register your node with the central system to automatically generate credentials and configuration.
                   </p>
                   <Button 
                     onClick={handleOpenRegistration}
-                    className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
+                    className="bg-dark-blue-600 hover:bg-dark-blue-700 text-white"
                     size="lg"
                   >
                     <Plus size={20} className="mr-2" />
@@ -139,7 +139,7 @@ pools:
               {/* Step 1 */}
               <Card className="p-4 glass-card">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <span className="bg-dark-teal-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>
+                  <span className="bg-dark-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>
                   Register Your Node Manually
                 </h3>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -156,7 +156,7 @@ pools:
               {/* Step 2 */}
               <Card className="p-4 glass-card">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <span className="bg-dark-teal-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span>
+                  <span className="bg-dark-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span>
                   Configure Your Node
                 </h3>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -179,7 +179,7 @@ pools:
               {/* Step 3 */}
               <Card className="p-4 glass-card">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <span className="bg-dark-teal-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span>
+                  <span className="bg-dark-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span>
                   Install Dependencies & Run
                 </h3>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -204,7 +204,7 @@ pools:
               {/* Step 4 */}
               <Card className="p-4 glass-card">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <span className="bg-dark-teal-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span>
+                  <span className="bg-dark-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span>
                   Verify Connection
                 </h3>
                 <p className="text-sm text-muted-foreground">
@@ -216,8 +216,8 @@ pools:
           </Tabs>
 
           {/* Integration Features */}
-          <Card className="p-4 glass-card border-dark-teal-600/30 mt-6">
-            <h3 className="font-semibold mb-2 text-dark-teal-400">Integration Features</h3>
+          <Card className="p-4 glass-card border-dark-blue-600/30 mt-6">
+            <h3 className="font-semibold mb-2 text-dark-blue-400">Integration Features</h3>
             <ul className="text-sm space-y-1 text-muted-foreground">
               <li>• Real-time pool metrics and analytics</li>
               <li>• Remote configuration management</li>

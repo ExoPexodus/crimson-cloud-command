@@ -29,8 +29,8 @@ export function StatusIndicator({
       label: label || "Warning",
     },
     error: {
-      color: "bg-dark-teal-700",
-      pulseColor: "bg-dark-teal-700/50",
+      color: "bg-dark-blue-700",
+      pulseColor: "bg-dark-blue-700/50",
       label: label || "Error",
     },
     inactive: {

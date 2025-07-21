@@ -65,7 +65,7 @@ export function AutoscaleConfig({
               id="autoscale-toggle" 
               checked={values.enabled}
               onCheckedChange={(checked) => setValues({...values, enabled: checked})}
-              className="data-[state=checked]:bg-dark-teal-500"
+              className="data-[state=checked]:bg-dark-blue-500"
             />
           </div>
         </div>
@@ -73,11 +73,11 @@ export function AutoscaleConfig({
       <CardContent>
         <Tabs defaultValue="rules">
           <TabsList className="bg-dark-bg mb-4">
-            <TabsTrigger value="rules" className="data-[state=active]:bg-dark-teal-800/30 data-[state=active]:text-dark-teal-50">
+            <TabsTrigger value="rules" className="data-[state=active]:bg-dark-blue-800/30 data-[state=active]:text-dark-blue-50">
               <RefreshCw size={16} className="mr-2" />
               Scaling Rules
             </TabsTrigger>
-            <TabsTrigger value="monitoring" className="data-[state=active]:bg-dark-teal-800/30 data-[state=active]:text-dark-teal-50">
+            <TabsTrigger value="monitoring" className="data-[state=active]:bg-dark-blue-800/30 data-[state=active]:text-dark-blue-50">
               <Activity size={16} className="mr-2" />
               Monitoring
             </TabsTrigger>
@@ -92,7 +92,7 @@ export function AutoscaleConfig({
                   type="number"
                   value={values.minInstances}
                   onChange={(e) => setValues({...values, minInstances: parseInt(e.target.value)})}
-                  className="bg-dark-bg/60 border-dark-bg-light/40 focus-visible:ring-dark-teal-500"
+                  className="bg-dark-bg/60 border-dark-bg-light/40 focus-visible:ring-dark-blue-500"
                 />
               </div>
               <div className="space-y-2">
@@ -102,7 +102,7 @@ export function AutoscaleConfig({
                   type="number"
                   value={values.maxInstances}
                   onChange={(e) => setValues({...values, maxInstances: parseInt(e.target.value)})}
-                  className="bg-dark-bg/60 border-dark-bg-light/40 focus-visible:ring-dark-teal-500"
+                  className="bg-dark-bg/60 border-dark-bg-light/40 focus-visible:ring-dark-blue-500"
                 />
               </div>
             </div>
@@ -119,7 +119,7 @@ export function AutoscaleConfig({
                   max={100}
                   step={5}
                   onValueChange={(value) => setValues({...values, cpuThreshold: value[0]})}
-                  className="[&>span]:bg-dark-teal-500"
+                  className="[&>span]:bg-dark-blue-500"
                 />
               </div>
               
@@ -134,7 +134,7 @@ export function AutoscaleConfig({
                   max={900}
                   step={30}
                   onValueChange={(value) => setValues({...values, cooldownPeriod: value[0]})}
-                  className="[&>span]:bg-dark-teal-500"
+                  className="[&>span]:bg-dark-blue-500"
                 />
               </div>
               
@@ -145,7 +145,7 @@ export function AutoscaleConfig({
                   type="number"
                   value={values.scaleUpBy}
                   onChange={(e) => setValues({...values, scaleUpBy: parseInt(e.target.value)})}
-                  className="bg-dark-bg/60 border-dark-bg-light/40 focus-visible:ring-dark-teal-500"
+                  className="bg-dark-bg/60 border-dark-bg-light/40 focus-visible:ring-dark-blue-500"
                 />
               </div>
             </div>
@@ -163,7 +163,7 @@ export function AutoscaleConfig({
               
               <div className="rounded-md border border-dark-bg-light/30 bg-dark-bg/60 p-4 text-center">
                 <p className="text-sm">Connect to Oracle Cloud API to configure advanced monitoring</p>
-                <Button variant="outline" className="mt-2 text-xs border-dark-teal-700/50 hover:bg-dark-teal-800/20">
+                <Button variant="outline" className="mt-2 text-xs border-dark-blue-700/50 hover:bg-dark-blue-800/20">
                   Connect API
                 </Button>
               </div>
@@ -174,7 +174,7 @@ export function AutoscaleConfig({
       <CardFooter className="border-t border-dark-bg-light/30 pt-4">
         <Button 
           onClick={handleSave} 
-          className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white ml-auto"
+          className="bg-dark-blue-600 hover:bg-dark-blue-700 text-white ml-auto"
         >
           <Save size={16} className="mr-2" />
           Save Configuration

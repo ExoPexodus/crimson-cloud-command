@@ -44,7 +44,7 @@ export function DashboardHeader({
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
           <Button 
-            className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white text-sm"
+            className="bg-dark-blue-600 hover:bg-dark-blue-700 text-white text-sm"
             onClick={() => setSetupDialogOpen(true)}
           >
             <Plus size={16} className="mr-2" />

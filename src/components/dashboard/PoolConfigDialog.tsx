@@ -100,7 +100,7 @@ export function PoolConfigDialog({ isOpen, onClose, poolName, poolId }: PoolConf
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-dark-teal-600 hover:bg-dark-teal-700 text-white"
+            className="bg-dark-blue-600 hover:bg-dark-blue-700 text-white"
           >
             Save Configuration
           </Button>

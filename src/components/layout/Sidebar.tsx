@@ -41,7 +41,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-dark-bg-light/40 p-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-gradient-dark-teal flex items-center justify-center shadow-md">
+          <div className="w-8 h-8 rounded bg-gradient-dark-blue flex items-center justify-center shadow-md">
             <Activity size={16} className="text-white" />
           </div>
           <span className="font-semibold text-lg">OCI Manager</span>
@@ -58,7 +58,7 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     asChild
                     isActive={location.pathname === item.url}
-                    className="data-[active=true]:bg-dark-teal-800/30 data-[active=true]:text-dark-teal-300 hover:bg-dark-bg-light/50"
+                    className="data-[active=true]:bg-dark-blue-800/30 data-[active=true]:text-dark-blue-300 hover:bg-dark-bg-light/50"
                   >
                     <a href="#" onClick={(e) => { e.preventDefault(); navigate(item.url); }}>
                       <item.icon />

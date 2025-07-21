@@ -200,7 +200,7 @@ pools:
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-dark-teal-500" />
+            <Settings className="w-5 h-5 text-dark-blue-500" />
             Configure Node: {node.name}
           </DialogTitle>
           <DialogDescription>
@@ -210,8 +210,8 @@ pools:
 
         <div className="space-y-4">
           {/* Node Information */}
-          <Card className="p-4 glass-card border-dark-teal-600/30">
-            <h3 className="font-semibold mb-3 text-dark-teal-400">Node Information</h3>
+          <Card className="p-4 glass-card border-dark-blue-600/30">
+            <h3 className="font-semibold mb-3 text-dark-blue-400">Node Information</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <Label className="text-muted-foreground">Node Name</Label>
