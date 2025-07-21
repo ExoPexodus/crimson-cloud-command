@@ -85,14 +85,7 @@ security = HTTPBearer()
 
 # Dependency to get current user
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
-    user = AuthService.verify_token(credentials.credentials, db)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
+    return AuthService.verify_token(credentials.credentials, db)
 
 # Health check - no auth required
 @app.get("/health")
