@@ -26,7 +26,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT settings
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 999999  # Temporarily remove expiration for debugging
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 class AuthService:
     @staticmethod
@@ -47,26 +47,49 @@ class AuthService:
     
     @staticmethod
     def verify_token(token: str, db: Session):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
+            logger.info(f"Verifying token: {token[:20]}...")
+            
             # Decode without verification first to manually check expiration with UTC
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+            logger.info(f"Token payload decoded successfully: {payload}")
             
             # Manually validate expiration using UTC time
             exp = payload.get("exp")
             if exp is None:
+                logger.error("Token has no expiration field")
                 return None
             
             # Check if token is expired using UTC time
             current_utc_timestamp = datetime.utcnow().timestamp()
+            logger.info(f"Token expiry: {exp}, Current UTC: {current_utc_timestamp}, Is expired: {exp < current_utc_timestamp}")
+            
             if exp < current_utc_timestamp:
+                logger.error("Token has expired")
                 return None
             
             email: str = payload.get("sub")
             if email is None:
+                logger.error("Token has no subject (email)")
                 return None
+                
+            logger.info(f"Looking up user with email: {email}")
             user = db.query(User).filter(User.email == email).first()
+            
+            if user:
+                logger.info(f"User found: {user.email}")
+            else:
+                logger.error(f"No user found with email: {email}")
+                
             return user
-        except JWTError:
+        except JWTError as e:
+            logger.error(f"JWT decode error: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in verify_token: {str(e)}")
             return None
     
     @staticmethod
