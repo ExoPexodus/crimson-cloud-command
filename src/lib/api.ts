@@ -73,6 +73,13 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
+    
+    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+    console.log(`🔑 Token available: ${this.token ? 'YES' : 'NO'}`);
+    if (this.token) {
+      console.log(`🔑 Token (first 20 chars): ${this.token.substring(0, 20)}...`);
+    }
+    
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -81,18 +88,31 @@ class ApiClient {
       },
       ...options,
     };
+    
+    if (this.token) {
+      console.log(`📤 Authorization header set: Bearer ${this.token.substring(0, 20)}...`);
+    }
+    
+    console.log(`📋 Request headers:`, config.headers);
+    console.log(`📡 Making fetch request to: ${url}`);
 
     try {
       const response = await fetch(url, config);
       
+      console.log(`📨 Response status: ${response.status} ${response.statusText}`);
+      console.log(`📨 Response headers:`, Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`❌ API Error ${response.status}:`, errorText);
         return { error: `HTTP ${response.status}: ${errorText}` };
       }
 
       const data = await response.json();
+      console.log(`✅ API Success:`, data);
       return { data };
     } catch (error) {
+      console.error('❌ API request failed:', error);
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

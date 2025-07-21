@@ -85,7 +85,17 @@ security = HTTPBearer()
 
 # Dependency to get current user
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
-    return AuthService.verify_token(credentials.credentials, db)
+    logger.info(f"🔐 get_current_user called")
+    logger.info(f"🔑 Token received (first 20 chars): {credentials.credentials[:20]}...")
+    
+    result = AuthService.verify_token(credentials.credentials, db)
+    logger.info(f"✅ Token verification result: {result is not None}")
+    if result:
+        logger.info(f"👤 User authenticated: {result.email}")
+    else:
+        logger.warning("❌ Token verification failed - returning None")
+    
+    return result
 
 # Health check - no auth required
 @app.get("/health")
@@ -222,40 +232,56 @@ async def get_node_config(
         elif authorization and authorization.startswith("Bearer "):
             try:
                 token = authorization.replace("Bearer ", "")
-                logger.info(f"Attempting to verify token for node config: {token[:20]}...")
+                logger.info(f"🌐 Web app authentication - Bearer token received: {token[:20]}...")
                 
                 # Try to decode token to see what's inside
                 try:
                     from jose import jwt
                     import time
                     payload = jwt.decode(token, verify=False)  # Don't verify to see content
-                    logger.info(f"Token payload: {payload}")
+                    logger.info(f"📦 Raw token payload: {payload}")
                     
                     # Check if token is expired
                     exp = payload.get('exp')
                     current_time = time.time()
-                    logger.info(f"Token expiry: {exp}, Current time: {current_time}, Expired: {exp < current_time}")
+                    logger.info(f"⏰ Token expiry: {exp}, Current time: {current_time}")
+                    logger.info(f"⏳ Token expired: {exp < current_time if exp else 'No exp field'}")
                     
                 except Exception as e:
-                    logger.error(f"Failed to decode token: {e}")
+                    logger.error(f"❌ Failed to decode token for inspection: {e}")
                 
+                logger.info("🔄 Calling AuthService.verify_token...")
                 current_user = AuthService.verify_token(token, db)
-                logger.info(f"Token verification result: {current_user}")
+                logger.info(f"✅ AuthService.verify_token result: {current_user is not None}")
+                
                 if not current_user:
+                    logger.error("❌ Token verification failed - raising 401")
                     raise HTTPException(status_code=401, detail="Invalid or expired token")
+                
+                logger.info(f"👤 User authenticated successfully: {current_user.email}")
+                logger.info(f"🔍 Looking up node {node_id}...")
                 
                 node = NodeService.get_node(db, node_id)
                 if not node:
+                    logger.error(f"❌ Node {node_id} not found")
                     raise HTTPException(status_code=404, detail="Node not found")
+                
+                logger.info(f"✅ Node {node_id} found: {node.name}")
+                logger.info(f"🔧 Fetching config for node {node_id}...")
                     
                 config = NodeConfigurationService.get_node_config(db, node_id)
                 if not config:
+                    logger.info(f"⚠️ No config found for node {node_id}, returning default")
                     return {"yaml_config": "# No configuration set yet\n"}
+                
+                logger.info(f"✅ Config found for node {node_id}, returning YAML")
                 return {"yaml_config": config.yaml_config}
+                
             except HTTPException:
+                logger.error("❌ HTTPException in Bearer token auth - re-raising")
                 raise
             except Exception as e:
-                logger.error(f"Bearer token auth failed: {str(e)}")
+                logger.error(f"❌ Unexpected error in Bearer token auth: {str(e)}")
                 raise HTTPException(status_code=401, detail="Invalid authentication")
         
         else:

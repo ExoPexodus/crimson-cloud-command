@@ -47,26 +47,62 @@ class AuthService:
     
     @staticmethod
     def verify_token(token: str, db: Session):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"🔍 verify_token called with token: {token[:20]}...")
+        
         try:
+            logger.info(f"🔐 SECRET_KEY in use: {SECRET_KEY[:10]}...")
+            logger.info(f"📊 ALGORITHM: {ALGORITHM}")
+            
             # Decode without verification first to manually check expiration with UTC
+            logger.info("🔓 Attempting to decode token...")
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+            logger.info(f"📦 Token payload decoded successfully: {payload}")
             
             # Manually validate expiration using UTC time
             exp = payload.get("exp")
+            logger.info(f"⏰ Token expiration: {exp}")
+            
             if exp is None:
+                logger.warning("❌ No expiration found in token")
                 return None
             
             # Check if token is expired using UTC time
             current_utc_timestamp = datetime.utcnow().timestamp()
+            logger.info(f"🕐 Current UTC timestamp: {current_utc_timestamp}")
+            logger.info(f"⏳ Token expires at: {exp}")
+            logger.info(f"🔄 Time until expiration: {exp - current_utc_timestamp} seconds")
+            
             if exp < current_utc_timestamp:
+                logger.warning(f"❌ Token expired! Expired {current_utc_timestamp - exp} seconds ago")
                 return None
             
+            logger.info("✅ Token is not expired")
+            
             email: str = payload.get("sub")
+            logger.info(f"📧 Email from token: {email}")
+            
             if email is None:
+                logger.warning("❌ No email (sub) found in token")
                 return None
+            
+            logger.info(f"🔍 Looking up user in database: {email}")
             user = db.query(User).filter(User.email == email).first()
+            
+            if user:
+                logger.info(f"👤 User found in database: {user.email} (ID: {user.id})")
+            else:
+                logger.warning(f"❌ User not found in database: {email}")
+            
             return user
-        except JWTError:
+            
+        except JWTError as e:
+            logger.error(f"❌ JWT Error: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Unexpected error in verify_token: {str(e)}")
             return None
     
     @staticmethod
