@@ -14,35 +14,35 @@
     --popover: 200 25% 10%;
     --popover-foreground: 185 10% 98%;
 
-    --primary: 175 70% 41%;
-    --primary-foreground: 185 10% 98%;
+    --primary: 215 85% 55%;
+    --primary-foreground: 210 10% 98%;
 
     --secondary: 200 25% 15%;
-    --secondary-foreground: 185 10% 98%;
+    --secondary-foreground: 210 10% 98%;
 
     --muted: 200 25% 20%;
-    --muted-foreground: 185 10% 70%;
+    --muted-foreground: 210 10% 70%;
 
-    --accent: 175 60% 35%;
-    --accent-foreground: 185 10% 98%;
+    --accent: 215 75% 45%;
+    --accent-foreground: 210 10% 98%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 185 10% 98%;
 
     --border: 200 25% 18%;
     --input: 200 25% 18%;
-    --ring: 175 70% 41%;
+    --ring: 215 85% 55%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 200 30% 10%;
-    --sidebar-foreground: 185 10% 90%;
-    --sidebar-primary: 175 70% 41%;
-    --sidebar-primary-foreground: 185 10% 100%;
+    --sidebar-foreground: 210 10% 90%;
+    --sidebar-primary: 215 85% 55%;
+    --sidebar-primary-foreground: 210 10% 100%;
     --sidebar-accent: 200 25% 15%;
-    --sidebar-accent-foreground: 185 10% 90%;
+    --sidebar-accent-foreground: 210 10% 90%;
     --sidebar-border: 200 25% 18%;
-    --sidebar-ring: 175 70% 41%;
+    --sidebar-ring: 215 85% 55%;
   }
 
   * {
@@ -53,20 +53,20 @@
     @apply bg-dark-bg text-foreground;
   }
   
-  .teal-scrollbar::-webkit-scrollbar {
+  .blue-scrollbar::-webkit-scrollbar {
     width: 8px;
   }
   
-  .teal-scrollbar::-webkit-scrollbar-track {
+  .blue-scrollbar::-webkit-scrollbar-track {
     @apply bg-dark-bg-lighter;
   }
   
-  .teal-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-dark-teal-600 rounded-full;
+  .blue-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-dark-blue-600 rounded-full;
   }
   
-  .teal-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-dark-teal-500;
+  .blue-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-blue-500;
   }
   
   .glass-card {

@@ -63,19 +63,19 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-                // Custom colors for our teal theme
-                "dark-teal": {
-                    DEFAULT: "#20B2AA",
-                    50: "#E6F7F6",
-                    100: "#CCEEED",
-                    200: "#99DDDA",
-                    300: "#66CCC8",
-                    400: "#33BBB5",
-                    500: "#20B2AA",
-                    600: "#1B9690",
-                    700: "#167A75",
-                    800: "#0F5D59",
-                    900: "#093F3C",
+                // Custom colors for our blue theme
+                "dark-blue": {
+                    DEFAULT: "#3B82F6",
+                    50: "#EFF6FF",
+                    100: "#DBEAFE",
+                    200: "#BFDBFE",
+                    300: "#93C5FD",
+                    400: "#60A5FA",
+                    500: "#3B82F6",
+                    600: "#2563EB",
+                    700: "#1D4ED8",
+                    800: "#1E40AF",
+                    900: "#1E3A8A",
                 },
                 "dark-bg": {
                     DEFAULT: "#111520",
@@ -106,24 +106,24 @@ export default {
 						height: '0'
 					}
 				},
-                'pulse-teal': {
+                'pulse-blue': {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.5' },
                 },
                 'glow': {
-                    '0%, 100%': { boxShadow: '0 0 5px rgba(32, 178, 170, 0.2)' },
-                    '50%': { boxShadow: '0 0 20px rgba(32, 178, 170, 0.6)' },
+                    '0%, 100%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.2)' },
+                    '50%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.6)' },
                 }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-                'pulse-teal': 'pulse-teal 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'pulse-blue': 'pulse-blue 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'glow': 'glow 3s ease-in-out infinite',
 			},
             backgroundImage: {
-                'gradient-dark-teal': 'linear-gradient(135deg, #20B2AA, #093F3C)',
-                'gradient-mesh': 'radial-gradient(at 80% 100%, rgba(32, 178, 170, 0.15) 0px, transparent 50%), radial-gradient(at 0% 0%, rgba(22, 122, 117, 0.1) 0px, transparent 50%)',
+                'gradient-dark-blue': 'linear-gradient(135deg, #3B82F6, #1E3A8A)',
+                'gradient-mesh': 'radial-gradient(at 80% 100%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), radial-gradient(at 0% 0%, rgba(29, 78, 216, 0.1) 0px, transparent 50%)',
             }
 		}
 	},
