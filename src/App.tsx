@@ -8,12 +8,13 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import Nodes from "./pages/Nodes";
+import UsersPage from "./pages/admin/Users";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function AuthenticatedApp() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, hasRole } = useAuth();
 
   if (loading) {
     return (
@@ -31,7 +32,8 @@ function AuthenticatedApp() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/nodes" element={<Nodes />} />
+        {hasRole('devops') && <Route path="/nodes" element={<Nodes />} />}
+        {hasRole('admin') && <Route path="/admin/users" element={<UsersPage />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

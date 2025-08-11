@@ -15,10 +15,10 @@ from schemas import (
     PoolCreate, PoolResponse, PoolUpdate,
     MetricCreate, MetricResponse,
     ScheduleCreate, ScheduleResponse,
-    UserCreate, UserResponse,
-    Token, NodeHeartbeatData, HeartbeatResponse,
+    UserCreate, UserResponse, UserListResponse, UserUpdateRole,
+    Token, AuthResponse, KeycloakLoginRequest, NodeHeartbeatData, HeartbeatResponse,
     SystemAnalyticsResponse, PoolAnalyticsResponse,
-    NodeRegister, NodeRegisterResponse
+    NodeRegister, NodeRegisterResponse, UserRole
 )
 from services import (
     NodeService, PoolService, MetricService, 
@@ -26,6 +26,8 @@ from services import (
     NodeConfigurationService, HeartbeatService, AnalyticsService
 )
 from auth_middleware import get_node_from_api_key
+from role_service import RoleService, require_admin, require_devops, require_user
+from keycloak_service import keycloak_service
 from seed_data import seed_initial_data
 from migration_manager import initialize_database
 
@@ -111,7 +113,7 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
         logger.error(f"Registration error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
-@app.post("/auth/login", response_model=Token)
+@app.post("/auth/login", response_model=AuthResponse)
 async def login(email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     try:
         user = AuthService.authenticate_user(db, email, password)
@@ -121,12 +123,68 @@ async def login(email: str = Form(...), password: str = Form(...), db: Session =
                 detail="Incorrect email or password"
             )
         access_token = AuthService.create_access_token(data={"sub": user.email})
-        return {"access_token": access_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": user
+        }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+@app.post("/auth/keycloak/login", response_model=AuthResponse)
+async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depends(get_db)):
+    """Login using Keycloak authorization code"""
+    try:
+        if not keycloak_service.is_enabled():
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Keycloak authentication is not configured"
+            )
+        
+        # Exchange code for token
+        token_data = keycloak_service.exchange_code_for_token(
+            login_request.code, 
+            login_request.redirect_uri
+        )
+        
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Failed to exchange authorization code"
+            )
+        
+        # Validate token and get/create user
+        keycloak_data = keycloak_service.validate_token(token_data['access_token'])
+        if not keycloak_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Keycloak token"
+            )
+        
+        user = AuthService.handle_keycloak_user(db, keycloak_data, token_data['access_token'])
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Failed to authenticate user"
+            )
+        
+        # Create local JWT token
+        local_token = AuthService.create_keycloak_jwt(user)
+        
+        return {
+            "access_token": local_token,
+            "token_type": "bearer", 
+            "user": user
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Keycloak login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Keycloak login failed: {str(e)}")
 
 # Node registration endpoint (for autoscaling nodes)
 @app.post("/nodes/register", response_model=NodeRegisterResponse)
@@ -138,10 +196,16 @@ async def register_node(node: NodeRegister, db: Session = Depends(get_db)):
         logger.error(f"Node registration error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Node registration failed: {str(e)}")
 
-# Node management endpoints
+# Node management endpoints (require devops or admin role)
 @app.get("/nodes", response_model=List[NodeResponse])
 async def get_nodes(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        # Check role permissions
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
         return NodeService.get_nodes(db)
     except Exception as e:
         logger.error(f"Get nodes error: {str(e)}")
@@ -150,6 +214,11 @@ async def get_nodes(db: Session = Depends(get_db), current_user = Depends(get_cu
 @app.post("/nodes", response_model=NodeResponse)
 async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
         return NodeService.create_node(db, node)
     except Exception as e:
         logger.error(f"Create node error: {str(e)}")
@@ -158,6 +227,11 @@ async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_u
 @app.get("/nodes/{node_id}", response_model=NodeResponse)
 async def get_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
         node = NodeService.get_node(db, node_id)
         if not node:
             raise HTTPException(status_code=404, detail="Node not found")
@@ -171,6 +245,11 @@ async def get_node(node_id: int, db: Session = Depends(get_db), current_user = D
 @app.put("/nodes/{node_id}", response_model=NodeResponse)
 async def update_node(node_id: int, node: NodeUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
         result = NodeService.update_node(db, node_id, node)
         if not result:
             raise HTTPException(status_code=404, detail="Node not found")
@@ -548,6 +627,62 @@ async def delete_schedule(schedule_id: int, db: Session = Depends(get_db), curre
     except Exception as e:
         logger.error(f"Delete schedule error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete schedule: {str(e)}")
+
+# Admin endpoints (require admin role)
+@app.get("/admin/users", response_model=List[UserListResponse])
+async def get_all_users(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Get all users for admin management"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        return UserService.get_all_users(db)
+    except Exception as e:
+        logger.error(f"Get all users error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get users: {str(e)}")
+
+@app.put("/admin/users/{user_id}/role", response_model=UserResponse)
+async def update_user_role(user_id: int, role_update: UserUpdateRole, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Update user role (admin only, local users only)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        
+        try:
+            updated_user = UserService.update_user_role(db, user_id, role_update.role)
+            if not updated_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            return updated_user
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+            
+    except Exception as e:
+        logger.error(f"Update user role error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update user role: {str(e)}")
+
+@app.get("/admin/users/{user_id}", response_model=UserResponse)
+async def get_user_details(user_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Get detailed user information (admin only)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+        
+    except Exception as e:
+        logger.error(f"Get user details error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get user details: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -13,6 +13,15 @@ class PoolStatus(str, Enum):
     WARNING = "warning" 
     ERROR = "error"
 
+class UserRole(str, Enum):
+    USER = "user"
+    DEVOPS = "devops"
+    ADMIN = "admin"
+
+class AuthProvider(str, Enum):
+    LOCAL = "local"
+    KEYCLOAK = "keycloak"
+
 # Node schemas
 class NodeCreate(BaseModel):
     name: str
@@ -151,6 +160,24 @@ class UserResponse(BaseModel):
     id: int
     email: str
     full_name: str
+    role: UserRole
+    auth_provider: AuthProvider
+    keycloak_user_id: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserUpdateRole(BaseModel):
+    role: UserRole
+
+class UserListResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: UserRole
+    auth_provider: AuthProvider
     is_active: bool
     created_at: datetime
 
@@ -161,6 +188,15 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class KeycloakLoginRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse
 
 # Heartbeat schemas
 class PoolAnalyticsData(BaseModel):

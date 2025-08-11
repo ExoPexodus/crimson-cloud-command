@@ -11,12 +11,14 @@ import json
 
 from models import (
     Node, Pool, Metric, Schedule, User, AuditLog, NodeConfiguration, 
-    NodeHeartbeat, PoolAnalytics, SystemAnalytics, NodeStatus, PoolStatus
+    NodeHeartbeat, PoolAnalytics, SystemAnalytics, NodeStatus, PoolStatus,
+    UserRole, AuthProvider
 )
 from schemas import (
     NodeCreate, NodeUpdate, PoolCreate, PoolUpdate, 
     MetricCreate, ScheduleCreate, UserCreate, NodeHeartbeatData,
-    PoolAnalyticsData, SystemAnalyticsResponse, NodeRegister, NodeRegisterResponse
+    PoolAnalyticsData, SystemAnalyticsResponse, NodeRegister, NodeRegisterResponse,
+    UserRole as UserRoleSchema, AuthProvider as AuthProviderSchema
 )
 from auth_middleware import APIKeyAuth
 
@@ -52,6 +54,19 @@ class AuthService:
         
         logger.info(f"🔍 verify_token called with token: {token[:20]}...")
         
+        # First try Keycloak token validation
+        try:
+            from keycloak_service import keycloak_service
+            
+            if keycloak_service.is_enabled():
+                keycloak_data = keycloak_service.validate_token(token)
+                if keycloak_data:
+                    logger.info("✅ Keycloak token validation successful")
+                    return AuthService.handle_keycloak_user(db, keycloak_data, token)
+        except Exception as e:
+            logger.info(f"⚠️ Keycloak validation failed, trying local: {e}")
+        
+        # Fall back to local JWT validation
         try:
             logger.info(f"🔐 SECRET_KEY in use: {SECRET_KEY[:10]}...")
             logger.info(f"📊 ALGORITHM: {ALGORITHM}")
@@ -106,6 +121,62 @@ class AuthService:
             return None
     
     @staticmethod
+    def handle_keycloak_user(db: Session, keycloak_data: dict, token: str):
+        """Handle Keycloak user authentication and role mapping"""
+        import logging
+        from keycloak_service import keycloak_service
+        from role_service import RoleService
+        
+        logger = logging.getLogger(__name__)
+        
+        user_info = keycloak_data['user_info']
+        email = user_info.get('email')
+        full_name = user_info.get('name', user_info.get('preferred_username', email))
+        keycloak_user_id = user_info.get('sub')
+        
+        if not email or not keycloak_user_id:
+            logger.error("Missing email or user ID from Keycloak")
+            return None
+        
+        # Check if user already exists
+        user = db.query(User).filter(
+            (User.email == email) | (User.keycloak_user_id == keycloak_user_id)
+        ).first()
+        
+        # Get user roles from Keycloak
+        roles = keycloak_service.get_user_roles(token)
+        app_role = RoleService.map_keycloak_roles_to_app_role(roles)
+        
+        if user:
+            # Update existing user
+            user.keycloak_user_id = keycloak_user_id
+            user.auth_provider = AuthProvider.KEYCLOAK
+            user.role = app_role
+            user.full_name = full_name
+            logger.info(f"Updated existing Keycloak user: {email} with role: {app_role}")
+        else:
+            # Create new user
+            user = User(
+                email=email,
+                full_name=full_name,
+                role=app_role,
+                auth_provider=AuthProvider.KEYCLOAK,
+                keycloak_user_id=keycloak_user_id,
+                hashed_password=None  # No password for Keycloak users
+            )
+            db.add(user)
+            logger.info(f"Created new Keycloak user: {email} with role: {app_role}")
+        
+        db.commit()
+        db.refresh(user)
+        return user
+    
+    @staticmethod
+    def create_keycloak_jwt(user: User) -> str:
+        """Create a local JWT token for Keycloak users"""
+        return AuthService.create_access_token(data={"sub": user.email})
+    
+    @staticmethod
     def authenticate_user(db: Session, email: str, password: str):
         user = db.query(User).filter(User.email == email).first()
         if not user or not AuthService.verify_password(password, user.hashed_password):
@@ -119,12 +190,35 @@ class UserService:
         db_user = User(
             email=user.email,
             hashed_password=hashed_password,
-            full_name=user.full_name
+            full_name=user.full_name,
+            role=UserRole.USER,  # Default role
+            auth_provider=AuthProvider.LOCAL
         )
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
         return db_user
+    
+    @staticmethod
+    def get_all_users(db: Session) -> List[User]:
+        """Get all users for admin management"""
+        return db.query(User).all()
+    
+    @staticmethod
+    def update_user_role(db: Session, user_id: int, new_role: UserRole) -> Optional[User]:
+        """Update user role (admin only, local users only)"""
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        
+        # Only allow role changes for local users
+        if user.auth_provider != AuthProvider.LOCAL:
+            raise ValueError("Cannot modify roles for non-local users")
+        
+        user.role = new_role
+        db.commit()
+        db.refresh(user)
+        return user
 
 class NodeService:
     @staticmethod

@@ -118,15 +118,29 @@ class ApiClient {
   }
 
   // Authentication
-  async login(email: string, password: string): Promise<ApiResponse<{ access_token: string; token_type: string }>> {
+  async login(email: string, password: string): Promise<ApiResponse<{ access_token: string; token_type: string; user: any }>> {
     const formData = new FormData();
     formData.append('email', email);
     formData.append('password', password);
     
-    const result = await this.request<{ access_token: string; token_type: string }>('/auth/login', {
+    const result = await this.request<{ access_token: string; token_type: string; user: any }>('/auth/login', {
       method: 'POST',
       body: formData,
       headers: {}, // Remove Content-Type to let browser set it for FormData
+    });
+    
+    if (result.data) {
+      this.token = result.data.access_token;
+      localStorage.setItem('access_token', this.token);
+    }
+    
+    return result;
+  }
+
+  async loginWithKeycloak(code: string, redirectUri: string): Promise<ApiResponse<{ access_token: string; token_type: string; user: any }>> {
+    const result = await this.request<{ access_token: string; token_type: string; user: any }>('/auth/keycloak/login', {
+      method: 'POST',
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
     
     if (result.data) {
@@ -147,6 +161,23 @@ class ApiClient {
   logout() {
     this.token = null;
     localStorage.removeItem('access_token');
+    localStorage.removeItem('user_data');
+  }
+
+  // Admin endpoints
+  async getAllUsers(): Promise<ApiResponse<any[]>> {
+    return this.request('/admin/users');
+  }
+
+  async updateUserRole(userId: number, role: string): Promise<ApiResponse<any>> {
+    return this.request(`/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async getUserDetails(userId: number): Promise<ApiResponse<any>> {
+    return this.request(`/admin/users/${userId}`);
   }
 
   // Nodes

@@ -18,6 +18,15 @@ class PoolStatus(enum.Enum):
     WARNING = "warning"
     ERROR = "error"
 
+class UserRole(enum.Enum):
+    USER = "user"
+    DEVOPS = "devops"
+    ADMIN = "admin"
+
+class AuthProvider(enum.Enum):
+    LOCAL = "local"
+    KEYCLOAK = "keycloak"
+
 class Node(Base):
     __tablename__ = "nodes"
     
@@ -92,8 +101,11 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)  # Nullable for Keycloak users
     full_name = Column(String(255), nullable=False)
+    role = Column(SQLEnum(UserRole), default=UserRole.USER)
+    auth_provider = Column(SQLEnum(AuthProvider), default=AuthProvider.LOCAL)
+    keycloak_user_id = Column(String(255), nullable=True, unique=True, index=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
