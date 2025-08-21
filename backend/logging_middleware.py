@@ -23,6 +23,7 @@ class APILoggingMiddleware(BaseHTTPMiddleware):
         client_ip = self.get_client_ip(request)
         
         # Log request start
+        print(f"[MIDDLEWARE] 🌐 {request.method} {request.url.path} - START from {client_ip}")
         self.logger.info(f"🌐 {request.method} {request.url.path} - START", extra={
             'method': request.method,
             'endpoint': request.url.path,

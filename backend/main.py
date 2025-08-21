@@ -44,8 +44,24 @@ app = FastAPI(
 )
 
 # Add logging middleware first (before CORS)
-from middleware.logging_middleware import APILoggingMiddleware
-app.add_middleware(APILoggingMiddleware)
+print("[MAIN] Attempting to register logging middleware...")
+try:
+    from logging_middleware import APILoggingMiddleware
+    app.add_middleware(APILoggingMiddleware)
+    print("[MAIN] ✅ API Logging middleware registered successfully")
+    logger.info("✅ API Logging middleware registered successfully")
+except ImportError as e:
+    print(f"[MAIN] ❌ Failed to import logging middleware: {e}")
+    logger.error(f"❌ Failed to import logging middleware: {e}")
+    # Try alternative import path
+    try:
+        from middleware.logging_middleware import APILoggingMiddleware
+        app.add_middleware(APILoggingMiddleware)
+        print("[MAIN] ✅ API Logging middleware registered with middleware path")
+        logger.info("✅ API Logging middleware registered with middleware path")
+    except ImportError as e2:
+        print(f"[MAIN] ❌ Failed to import logging middleware with middleware path: {e2}")
+        logger.error(f"❌ Failed to import logging middleware with middleware path: {e2}")
 
 # CORS middleware - must be added after logging middleware
 app.add_middleware(
