@@ -13,8 +13,15 @@ class RoleService:
     @staticmethod
     def map_keycloak_roles_to_app_role(keycloak_roles: List[str]) -> UserRole:
         """Map Keycloak roles to application role"""
-        # Check for devops role first
-        if 'devops' in keycloak_roles:
+        # Convert all roles to lowercase for case-insensitive comparison
+        lower_roles = [role.lower() for role in keycloak_roles]
+        
+        # Check for admin role first (highest priority)
+        if any(role in lower_roles for role in ['admin', 'administrator']):
+            return UserRole.ADMIN
+        
+        # Check for devops role
+        if any(role in lower_roles for role in ['devops', 'dev-ops']):
             return UserRole.DEVOPS
         
         # Default to user role for all other cases

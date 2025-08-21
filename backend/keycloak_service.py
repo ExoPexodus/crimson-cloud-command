@@ -81,6 +81,13 @@ class KeycloakService:
             realm_roles = realm_access.get('roles', [])
             roles.extend(realm_roles)
             
+            # Also check for groups (Keycloak groups are often mapped as roles)
+            groups = token_info.get('groups', [])
+            if groups:
+                roles.extend(groups)
+                
+            logger.info(f"Keycloak roles and groups extracted: {roles}")
+            
             return roles
             
         except Exception as e:
