@@ -31,19 +31,11 @@ from keycloak_service import keycloak_service
 from seed_data import seed_initial_data
 from migration_manager import initialize_database
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG, 
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-    ]
-)
-logger = logging.getLogger(__name__)
+# Configure comprehensive logging
+from logger_config import setup_logging
+setup_logging()
 
-# Configure uvicorn logging
-logging.getLogger("uvicorn").setLevel(logging.DEBUG)
-logging.getLogger("uvicorn.access").setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Oracle Cloud Autoscaling Management API",
@@ -51,7 +43,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware - must be added before other middleware
+# Add logging middleware first (before CORS)
+from middleware.logging_middleware import APILoggingMiddleware
+app.add_middleware(APILoggingMiddleware)
+
+# CORS middleware - must be added after logging middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins for development

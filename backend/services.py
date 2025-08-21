@@ -157,6 +157,9 @@ class AuthService:
         logger.info(f"🎯 MAPPED APPLICATION ROLE: {app_role}")
         logger.info(f"📊 Role mapping details - Input: {roles} -> Output: {app_role}")
         
+        # Log database operation
+        from logger_config import log_database_operation
+        
         if user:
             # Update existing user
             old_role = user.role
@@ -166,6 +169,7 @@ class AuthService:
             user.full_name = full_name
             logger.info(f"✅ Updated existing Keycloak user: {email}")
             logger.info(f"🔄 Role change: {old_role} -> {app_role}")
+            log_database_operation("UPDATE", "users", user.id, True)
         else:
             # Create new user
             user = User(
@@ -179,10 +183,18 @@ class AuthService:
             db.add(user)
             logger.info(f"🆕 Created new Keycloak user: {email} with role: {app_role}")
         
-        db.commit()
-        db.refresh(user)
-        logger.info(f"💾 User saved to database with final role: {user.role}")
-        return user
+        try:
+            db.commit()
+            db.refresh(user)
+            logger.info(f"💾 User saved to database with final role: {user.role}")
+            if not hasattr(user, 'id') or not user.id:
+                log_database_operation("CREATE", "users", "new_user", True)
+            return user
+        except Exception as e:
+            logger.error(f"❌ Database error saving user: {e}")
+            log_database_operation("SAVE", "users", user.email, False, str(e))
+            db.rollback()
+            return None
     
     @staticmethod
     def create_keycloak_jwt(user: User) -> str:
