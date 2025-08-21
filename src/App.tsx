@@ -32,8 +32,12 @@ function AuthenticatedApp() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
-        {hasRole('devops') && <Route path="/nodes" element={<Nodes />} />}
-        {hasRole('admin') && <Route path="/admin/users" element={<UsersPage />} />}
+        <Route path="/nodes" element={
+          hasRole('devops') ? <Nodes /> : <NotFound />
+        } />
+        <Route path="/admin/users" element={
+          hasRole('admin') ? <UsersPage /> : <NotFound />
+        } />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

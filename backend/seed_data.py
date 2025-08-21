@@ -29,6 +29,8 @@ def create_default_admin(db: Session):
                 email=DEFAULT_ADMIN_EMAIL,
                 hashed_password=hashed_password,
                 full_name=DEFAULT_ADMIN_NAME,
+                role='admin',
+                auth_provider='local',
                 is_active=True
             )
             
