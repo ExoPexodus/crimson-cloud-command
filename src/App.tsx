@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import Nodes from "./pages/Nodes";
+import Settings from "./pages/Settings";
 import UsersPage from "./pages/admin/Users";
 import NotFound from "./pages/NotFound";
 
@@ -32,6 +33,7 @@ function AuthenticatedApp() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/nodes" element={
           hasRole('devops') ? <Nodes /> : <NotFound />
         } />

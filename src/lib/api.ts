@@ -158,6 +158,13 @@ class ApiClient {
     });
   }
 
+  async updateProfile(data: { full_name?: string; email?: string; current_password?: string; new_password?: string }): Promise<ApiResponse<any>> {
+    return this.request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   logout() {
     this.token = null;
     localStorage.removeItem('access_token');
