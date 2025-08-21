@@ -13,18 +13,29 @@ class RoleService:
     @staticmethod
     def map_keycloak_roles_to_app_role(keycloak_roles: List[str]) -> UserRole:
         """Map Keycloak roles to application role"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"🎭 ROLE MAPPING - Input roles: {keycloak_roles}")
+        
         # Convert all roles to lowercase for case-insensitive comparison
         lower_roles = [role.lower() for role in keycloak_roles]
+        logger.info(f"🔤 Lowercase roles: {lower_roles}")
         
         # Check for admin role first (highest priority)
-        if any(role in lower_roles for role in ['admin', 'administrator']):
+        admin_matches = [role for role in lower_roles if role in ['admin', 'administrator']]
+        if admin_matches:
+            logger.info(f"👑 ADMIN role detected! Matching roles: {admin_matches}")
             return UserRole.ADMIN
         
         # Check for devops role
-        if any(role in lower_roles for role in ['devops', 'dev-ops']):
+        devops_matches = [role for role in lower_roles if role in ['devops', 'dev-ops']]
+        if devops_matches:
+            logger.info(f"🛠️ DEVOPS role detected! Matching roles: {devops_matches}")
             return UserRole.DEVOPS
         
         # Default to user role for all other cases
+        logger.info(f"👤 No special roles found, defaulting to USER role")
         return UserRole.USER
     
     @staticmethod

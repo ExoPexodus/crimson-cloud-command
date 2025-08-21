@@ -134,6 +134,10 @@ class AuthService:
         full_name = user_info.get('name', user_info.get('preferred_username', email))
         keycloak_user_id = user_info.get('sub')
         
+        logger.info(f"🔍 KEYCLOAK ROLE DETECTION - Processing user: {email}")
+        logger.info(f"📋 Keycloak user_info: {user_info}")
+        logger.info(f"📋 Keycloak token_info: {keycloak_data.get('token_info', {})}")
+        
         if not email or not keycloak_user_id:
             logger.error("Missing email or user ID from Keycloak")
             return None
@@ -143,17 +147,25 @@ class AuthService:
             (User.email == email) | (User.keycloak_user_id == keycloak_user_id)
         ).first()
         
-        # Get user roles from Keycloak
+        # Get user roles from Keycloak with verbose logging
+        logger.info(f"🔐 Extracting roles from Keycloak for user: {email}")
         roles = keycloak_service.get_user_roles(token)
+        logger.info(f"🎭 RAW KEYCLOAK ROLES/GROUPS DETECTED: {roles}")
+        
+        # Map to application role with verbose logging
         app_role = RoleService.map_keycloak_roles_to_app_role(roles)
+        logger.info(f"🎯 MAPPED APPLICATION ROLE: {app_role}")
+        logger.info(f"📊 Role mapping details - Input: {roles} -> Output: {app_role}")
         
         if user:
             # Update existing user
+            old_role = user.role
             user.keycloak_user_id = keycloak_user_id
             user.auth_provider = AuthProvider.KEYCLOAK
             user.role = app_role
             user.full_name = full_name
-            logger.info(f"Updated existing Keycloak user: {email} with role: {app_role}")
+            logger.info(f"✅ Updated existing Keycloak user: {email}")
+            logger.info(f"🔄 Role change: {old_role} -> {app_role}")
         else:
             # Create new user
             user = User(
@@ -165,10 +177,11 @@ class AuthService:
                 hashed_password=None  # No password for Keycloak users
             )
             db.add(user)
-            logger.info(f"Created new Keycloak user: {email} with role: {app_role}")
+            logger.info(f"🆕 Created new Keycloak user: {email} with role: {app_role}")
         
         db.commit()
         db.refresh(user)
+        logger.info(f"💾 User saved to database with final role: {user.role}")
         return user
     
     @staticmethod
