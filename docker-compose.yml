@@ -30,8 +30,8 @@ services:
       - .env
     ports:
       - "8000:8000"
-    volumes:
-      - ./logs:/app/logs  # Mount logs directory
+    # volumes:
+      # - ./logs:/app/logs  # Logs now go to console instead of files
     depends_on:
       postgres:
         condition: service_healthy

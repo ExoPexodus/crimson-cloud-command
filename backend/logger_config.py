@@ -79,11 +79,7 @@ class ConsoleFormatter(logging.Formatter):
 
 
 def setup_logging():
-    """Configure comprehensive logging for the application"""
-    
-    # Ensure logs directory exists
-    log_dir = '/app/logs'
-    os.makedirs(log_dir, exist_ok=True)
+    """Configure comprehensive logging for console output only"""
     
     # Create root logger
     root_logger = logging.getLogger()
@@ -92,66 +88,44 @@ def setup_logging():
     # Clear any existing handlers
     root_logger.handlers.clear()
     
-    # Console handler with human-readable format
+    # Console handler with human-readable format - set to DEBUG to see everything
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(ConsoleFormatter())
     
-    # File handler for all logs (JSON format)
-    file_handler = logging.handlers.RotatingFileHandler(
-        filename=f'{log_dir}/app.log',
-        maxBytes=50 * 1024 * 1024,  # 50MB
-        backupCount=10,
-        encoding='utf-8'
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(APILoggingFormatter())
-    
-    # API-specific file handler 
-    api_handler = logging.handlers.RotatingFileHandler(
-        filename=f'{log_dir}/api_requests.log',
-        maxBytes=50 * 1024 * 1024,  # 50MB
-        backupCount=10,
-        encoding='utf-8'
-    )
-    api_handler.setLevel(logging.INFO)
-    api_handler.setFormatter(APILoggingFormatter())
-    
-    # Error-only file handler
-    error_handler = logging.handlers.RotatingFileHandler(
-        filename=f'{log_dir}/errors.log',
-        maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=5,
-        encoding='utf-8'
-    )
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(APILoggingFormatter())
-    
-    # Add handlers to root logger
+    # Add only console handler to root logger
     root_logger.addHandler(console_handler)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(error_handler)
     
     # Configure specific loggers
-    configure_specific_loggers(api_handler)
+    configure_specific_loggers_console()
     
     # Log startup message
-    logging.info("🚀 Logging system initialized")
-    logging.info(f"📁 Log directory: {log_dir}")
-    logging.info("📊 Log files: app.log, api_requests.log, errors.log")
+    logging.info("🚀 Logging system initialized for console output")
+    logging.info("📊 All logs will be printed to console/stdout")
 
 
-def configure_specific_loggers(api_handler):
-    """Configure specific loggers for different components"""
+def configure_specific_loggers_console():
+    """Configure specific loggers for console output only"""
     
     # API request logger
     api_logger = logging.getLogger('api_requests')
-    api_logger.addHandler(api_handler)
     api_logger.setLevel(logging.INFO)
+    
+    # API middleware logger
+    middleware_logger = logging.getLogger('api_middleware')
+    middleware_logger.setLevel(logging.DEBUG)
     
     # Authentication logger
     auth_logger = logging.getLogger('authentication')
     auth_logger.setLevel(logging.INFO)
+    
+    # Main app logger
+    main_logger = logging.getLogger('main')
+    main_logger.setLevel(logging.DEBUG)
+    
+    # Services logger
+    services_logger = logging.getLogger('services')
+    services_logger.setLevel(logging.DEBUG)
     
     # Database logger
     db_logger = logging.getLogger('sqlalchemy.engine')
