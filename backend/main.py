@@ -31,11 +31,19 @@ from keycloak_service import keycloak_service
 from seed_data import seed_initial_data
 from migration_manager import initialize_database
 
-# Configure comprehensive logging
-from logger_config import setup_logging
-setup_logging()
-
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG, 
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Configure uvicorn logging
+logging.getLogger("uvicorn").setLevel(logging.DEBUG)
+logging.getLogger("uvicorn.access").setLevel(logging.DEBUG)
 
 app = FastAPI(
     title="Oracle Cloud Autoscaling Management API",
@@ -43,35 +51,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add logging middleware first (before CORS)
-print("[MAIN] Attempting to register logging middleware...")
-try:
-    from logging_middleware import APILoggingMiddleware
-    app.add_middleware(APILoggingMiddleware)
-    print("[MAIN] ✅ API Logging middleware registered successfully")
-    logger.info("✅ API Logging middleware registered successfully")
-except ImportError as e:
-    print(f"[MAIN] ❌ Failed to import logging middleware: {e}")
-    logger.error(f"❌ Failed to import logging middleware: {e}")
-    # Try alternative import path
-    try:
-        from middleware.logging_middleware import APILoggingMiddleware
-        app.add_middleware(APILoggingMiddleware)
-        print("[MAIN] ✅ API Logging middleware registered with middleware path")
-        logger.info("✅ API Logging middleware registered with middleware path")
-    except ImportError as e2:
-        print(f"[MAIN] ❌ Failed to import logging middleware with middleware path: {e2}")
-        logger.error(f"❌ Failed to import logging middleware with middleware path: {e2}")
-
-# CORS middleware - must be added after logging middleware
+# CORS middleware - must be added before other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://frontend:3000",
-        "*"  # Allow all origins for development
-    ],
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

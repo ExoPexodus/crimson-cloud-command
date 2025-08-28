@@ -30,8 +30,6 @@ services:
       - .env
     ports:
       - "8000:8000"
-    # volumes:
-      # - ./logs:/app/logs  # Logs now go to console instead of files
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,7 +40,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    command: gunicorn main:app --bind 0.0.0.0:8000 --workers 4 --worker-class uvicorn.workers.UvicornWorker --log-level debug --access-logfile -
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level debug --access-log
 
   frontend:
     build:
