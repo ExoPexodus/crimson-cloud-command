@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function KeycloakLoginButton() {
   const { loginWithKeycloak } = useAuth();
@@ -35,24 +35,31 @@ export function KeycloakLoginButton() {
   };
 
   // Check for Keycloak callback on component mount
-  useState(() => {
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     
     if (code && window.location.pathname === '/auth/keycloak/callback') {
+      setIsLoading(true);
       const redirectUri = `${window.location.origin}/auth/keycloak/callback`;
       
       loginWithKeycloak(code, redirectUri).then((success) => {
         if (success) {
           // Clear URL parameters and redirect to app
           window.history.replaceState({}, document.title, '/');
+          window.location.href = '/'; // Force a full redirect to ensure auth state updates
         } else {
           console.error('Keycloak login failed');
+          setIsLoading(false);
           window.history.replaceState({}, document.title, '/');
         }
+      }).catch((error) => {
+        console.error('Keycloak login error:', error);
+        setIsLoading(false);
+        window.history.replaceState({}, document.title, '/');
       });
     }
-  });
+  }, [loginWithKeycloak]);
 
   return (
     <Button 
