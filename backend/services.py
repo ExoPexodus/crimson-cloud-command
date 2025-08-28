@@ -130,13 +130,33 @@ class AuthService:
         logger = logging.getLogger(__name__)
         
         user_info = keycloak_data['user_info']
+        token_info = keycloak_data.get('token_info', {})
         email = user_info.get('email')
         full_name = user_info.get('name', user_info.get('preferred_username', email))
         keycloak_user_id = user_info.get('sub')
         
         logger.info(f"🔍 KEYCLOAK ROLE DETECTION - Processing user: {email}")
-        logger.info(f"📋 Keycloak user_info: {user_info}")
-        logger.info(f"📋 Keycloak token_info: {keycloak_data.get('token_info', {})}")
+        logger.info(f"📋 COMPLETE Keycloak user_info: {user_info}")
+        logger.info(f"📋 COMPLETE Keycloak token_info: {token_info}")
+        
+        # Extract and log all possible role/group sources
+        logger.info(f"🎭 TOKEN GROUPS: {token_info.get('groups', [])}")
+        logger.info(f"🎭 TOKEN REALM ACCESS: {token_info.get('realm_access', {})}")
+        logger.info(f"🎭 TOKEN RESOURCE ACCESS: {token_info.get('resource_access', {})}")
+        logger.info(f"🎭 USER INFO GROUPS: {user_info.get('groups', [])}")
+        logger.info(f"🎭 USER INFO ROLES: {user_info.get('roles', [])}")
+        
+        # Print to console for easy debugging
+        print(f"\n=== KEYCLOAK LOGIN DEBUG INFO ===")
+        print(f"User Email: {email}")
+        print(f"User Name: {full_name}")
+        print(f"Keycloak User ID: {keycloak_user_id}")
+        print(f"Groups from token: {token_info.get('groups', [])}")
+        print(f"Realm access: {token_info.get('realm_access', {})}")
+        print(f"Resource access: {token_info.get('resource_access', {})}")
+        print(f"Groups from user_info: {user_info.get('groups', [])}")
+        print(f"Roles from user_info: {user_info.get('roles', [])}")
+        print(f"================================\n")
         
         if not email or not keycloak_user_id:
             logger.error("Missing email or user ID from Keycloak")

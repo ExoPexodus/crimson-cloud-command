@@ -85,6 +85,14 @@ class KeycloakService:
             groups = token_info.get('groups', [])
             if groups:
                 roles.extend(groups)
+            
+            # Print to console for easy debugging
+            print(f"\n=== KEYCLOAK ROLES EXTRACTION ===")
+            print(f"Client roles: {client_roles}")
+            print(f"Realm roles: {realm_roles}")
+            print(f"Groups: {groups}")
+            print(f"All combined roles/groups: {roles}")
+            print(f"================================\n")
                 
             logger.info(f"Keycloak roles and groups extracted: {roles}")
             
