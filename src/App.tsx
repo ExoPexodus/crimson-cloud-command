@@ -40,6 +40,7 @@ function AuthenticatedApp() {
         <Route path="/admin/users" element={
           hasRole('admin') ? <UsersPage /> : <NotFound />
         } />
+        <Route path="/auth/keycloak/callback" element={<AuthPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

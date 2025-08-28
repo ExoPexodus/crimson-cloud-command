@@ -9,52 +9,66 @@ export function KeycloakLoginButton() {
   const handleKeycloakLogin = () => {
     setIsLoading(true);
     
-    // Get Keycloak configuration from environment
-    const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL;
-    const realm = import.meta.env.VITE_KEYCLOAK_REALM;
-    const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID;
-    
-    if (!keycloakUrl || !realm || !clientId) {
-      console.error('Keycloak configuration missing');
-      setIsLoading(false);
-      return;
-    }
-    
-    // Construct redirect URI
+    const keycloakConfig = {
+      server: import.meta.env.VITE_KEYCLOAK_SERVER_URL || 'https://uat-auth.kocharsoft.com/auth',
+      realm: import.meta.env.VITE_KEYCLOAK_REALM || 'kocharsoft',
+      clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'autoscaling-frontend'
+    };
+
     const redirectUri = `${window.location.origin}/auth/keycloak/callback`;
     
-    // Construct Keycloak authorization URL
-    const authUrl = new URL(`${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth`);
-    authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('scope', 'openid profile email');
+    const authUrl = `${keycloakConfig.server}/realms/${keycloakConfig.realm}/protocol/openid-connect/auth` +
+      `?client_id=${keycloakConfig.clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=code` +
+      `&scope=openid profile email`;
+
+    console.log('🔗 Redirecting to Keycloak:', authUrl);
+    console.log('🔗 Redirect URI:', redirectUri);
     
     // Redirect to Keycloak
-    window.location.href = authUrl.toString();
+    window.location.href = authUrl;
   };
 
   // Check for Keycloak callback on component mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
+    const error = urlParams.get('error');
+    
+    console.log('🔍 Keycloak callback check:', { 
+      code: code ? 'present' : 'none', 
+      error,
+      pathname: window.location.pathname 
+    });
+    
+    if (error) {
+      console.error('🚨 Keycloak error:', error);
+      setIsLoading(false);
+      window.history.replaceState({}, document.title, '/');
+      return;
+    }
     
     if (code && window.location.pathname === '/auth/keycloak/callback') {
+      console.log('🔄 Processing Keycloak callback...');
       setIsLoading(true);
       const redirectUri = `${window.location.origin}/auth/keycloak/callback`;
       
+      console.log('📞 Calling loginWithKeycloak with:', { code: code.slice(0, 10) + '...', redirectUri });
+      
       loginWithKeycloak(code, redirectUri).then((success) => {
+        console.log('✅ Keycloak login result:', success);
         if (success) {
           // Clear URL parameters and redirect to app
           window.history.replaceState({}, document.title, '/');
           window.location.href = '/'; // Force a full redirect to ensure auth state updates
         } else {
-          console.error('Keycloak login failed');
+          console.error('❌ Keycloak login failed');
           setIsLoading(false);
           window.history.replaceState({}, document.title, '/');
         }
       }).catch((error) => {
-        console.error('Keycloak login error:', error);
+        console.error('❌ Keycloak login error:', error);
         setIsLoading(false);
         window.history.replaceState({}, document.title, '/');
       });

@@ -2,7 +2,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
-    : 'http://localhost:8000');
+    : window.location.protocol === 'file:' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:8000'
+      : 'http://backend:8000');
 
 interface ApiResponse<T> {
   data?: T;
