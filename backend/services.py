@@ -146,17 +146,27 @@ class AuthService:
         logger.info(f"🎭 USER INFO GROUPS: {user_info.get('groups', [])}")
         logger.info(f"🎭 USER INFO ROLES: {user_info.get('roles', [])}")
         
+        # Extract all groups from different sources
+        groups_from_token = token_info.get('groups', [])
+        groups_from_user_info = user_info.get('groups', [])
+        groups_from_realm = token_info.get('realm_access', {}).get('groups', [])
+        
+        # Combine all group sources
+        all_groups = list(set(groups_from_token + groups_from_user_info + groups_from_realm))
+        
         # Print to console for easy debugging
-        print(f"\n=== KEYCLOAK LOGIN DEBUG INFO ===")
-        print(f"User Email: {email}")
-        print(f"User Name: {full_name}")
-        print(f"Keycloak User ID: {keycloak_user_id}")
-        print(f"Groups from token: {token_info.get('groups', [])}")
-        print(f"Realm access: {token_info.get('realm_access', {})}")
-        print(f"Resource access: {token_info.get('resource_access', {})}")
-        print(f"Groups from user_info: {user_info.get('groups', [])}")
-        print(f"Roles from user_info: {user_info.get('roles', [])}")
-        print(f"================================\n")
+        print(f"\n=== KEYCLOAK LOGIN & GROUPS DEBUG ===")
+        print(f"👤 User Email: {email}")
+        print(f"👤 User Name: {full_name}")
+        print(f"👤 Keycloak User ID: {keycloak_user_id}")
+        print(f"🏷️  Groups from token: {groups_from_token}")
+        print(f"🏷️  Groups from user_info: {groups_from_user_info}")
+        print(f"🏷️  Groups from realm access: {groups_from_realm}")
+        print(f"🏷️  ALL COMBINED GROUPS: {all_groups}")
+        print(f"🎭 Realm access: {token_info.get('realm_access', {})}")
+        print(f"🎭 Resource access: {token_info.get('resource_access', {})}")
+        print(f"🎭 Roles from user_info: {user_info.get('roles', [])}")
+        print(f"====================================\n")
         
         if not email or not keycloak_user_id:
             logger.error("Missing email or user ID from Keycloak")
