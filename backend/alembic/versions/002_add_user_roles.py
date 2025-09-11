@@ -16,15 +16,15 @@ depends_on = None
 
 def upgrade():
     # Create enum types
-    user_role_enum = sa.Enum('USER', 'DEVOPS', 'ADMIN', name='userrole')
-    auth_provider_enum = sa.Enum('LOCAL', 'KEYCLOAK', name='authprovider')
+    user_role_enum = sa.Enum('user', 'devops', 'admin', name='userrole')
+    auth_provider_enum = sa.Enum('local', 'keycloak', name='authprovider')
     
     user_role_enum.create(op.get_bind())
     auth_provider_enum.create(op.get_bind())
     
     # Add new columns to users table
-    op.add_column('users', sa.Column('role', user_role_enum, nullable=False, server_default='USER'))
-    op.add_column('users', sa.Column('auth_provider', auth_provider_enum, nullable=False, server_default='LOCAL'))
+    op.add_column('users', sa.Column('role', user_role_enum, nullable=False, server_default='user'))
+    op.add_column('users', sa.Column('auth_provider', auth_provider_enum, nullable=False, server_default='local'))
     op.add_column('users', sa.Column('keycloak_user_id', sa.String(255), nullable=True))
     
     # Make hashed_password nullable for Keycloak users
@@ -34,7 +34,7 @@ def upgrade():
     op.create_index('ix_users_keycloak_user_id', 'users', ['keycloak_user_id'], unique=True)
     
     # Update existing admin user to have admin role
-    op.execute("UPDATE users SET role = 'ADMIN' WHERE email = 'admin@admin.com'")
+    op.execute("UPDATE users SET role = 'admin' WHERE email = 'admin@admin.com'")
 
 def downgrade():
     # Remove indexes
@@ -49,8 +49,8 @@ def downgrade():
     op.alter_column('users', 'hashed_password', nullable=False)
     
     # Drop enum types
-    user_role_enum = sa.Enum('USER', 'DEVOPS', 'ADMIN', name='userrole')
-    auth_provider_enum = sa.Enum('LOCAL', 'KEYCLOAK', name='authprovider')
+    user_role_enum = sa.Enum('user', 'devops', 'admin', name='userrole')
+    auth_provider_enum = sa.Enum('local', 'keycloak', name='authprovider')
     
     user_role_enum.drop(op.get_bind())
     auth_provider_enum.drop(op.get_bind())
