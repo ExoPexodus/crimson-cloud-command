@@ -174,10 +174,17 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
         # Create local JWT token
         local_token = AuthService.create_keycloak_jwt(user)
         
+        # Get user roles from Keycloak
+        user_roles = keycloak_service.get_user_roles(token_data['access_token'])
+        
         return {
             "access_token": local_token,
             "token_type": "bearer", 
-            "user": user
+            "user": user,
+            "keycloak_data": keycloak_data,
+            "token_data": token_data,
+            "roles": user_roles,
+            "groups": keycloak_data.get('groups', [])
         }
         
     except HTTPException:
