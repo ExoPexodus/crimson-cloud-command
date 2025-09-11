@@ -70,6 +70,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await apiClient.loginWithKeycloak(code, redirectUri);
       if (result.data) {
+        // Log all Keycloak data to browser console
+        console.group('🔐 Keycloak Login Success');
+        console.log('User Data:', result.data.user);
+        console.log('Access Token:', result.data.access_token);
+        
+        // Log any additional Keycloak-specific data if present
+        if ((result.data as any).keycloak_data) {
+          console.log('Keycloak Data:', (result.data as any).keycloak_data);
+        }
+        if ((result.data as any).roles) {
+          console.log('Keycloak Roles:', (result.data as any).roles);
+        }
+        if ((result.data as any).groups) {
+          console.log('Keycloak Groups:', (result.data as any).groups);
+        }
+        if ((result.data as any).token_data) {
+          console.log('Token Data:', (result.data as any).token_data);
+        }
+        
+        // Log the entire response for debugging
+        console.log('Full Response:', result.data);
+        console.groupEnd();
+        
         setIsAuthenticated(true);
         setUser(result.data.user);
         localStorage.setItem('user_data', JSON.stringify(result.data.user));
