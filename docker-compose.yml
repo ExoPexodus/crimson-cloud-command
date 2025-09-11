@@ -40,7 +40,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    command: gunicorn main:app --bind 0.0.0.0:8000 --workers 4 --worker-class uvicorn.workers.UvicornWorker --reload --log-level debug --access-log
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level debug --access-log
 
   frontend:
     build:
