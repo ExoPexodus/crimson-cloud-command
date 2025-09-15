@@ -1,7 +1,7 @@
 
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from models import User
+from models import User, UserRole, AuthProvider
 import logging
 
 # Set up password hashing
@@ -29,8 +29,8 @@ def create_default_admin(db: Session):
                 email=DEFAULT_ADMIN_EMAIL,
                 hashed_password=hashed_password,
                 full_name=DEFAULT_ADMIN_NAME,
-                role='admin',
-                auth_provider='local',
+                role=UserRole.ADMIN,
+                auth_provider=AuthProvider.LOCAL,
                 is_active=True
             )
             
