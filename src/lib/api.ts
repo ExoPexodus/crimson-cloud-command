@@ -62,24 +62,10 @@ interface NodeAnalytics {
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
-  private logoutCallback?: () => void;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
     this.token = localStorage.getItem('access_token');
-  }
-
-  setLogoutCallback(callback: () => void) {
-    this.logoutCallback = callback;
-  }
-
-  setToken(token: string | null) {
-    this.token = token;
-    if (token) {
-      localStorage.setItem('access_token', token);
-    } else {
-      localStorage.removeItem('access_token');
-    }
   }
 
   private async request<T>(
@@ -115,15 +101,6 @@ class ApiClient {
       
       console.log(`📨 Response status: ${response.status} ${response.statusText}`);
       console.log(`📨 Response headers:`, Object.fromEntries(response.headers.entries()));
-      
-      if (response.status === 401) {
-        console.log('🔓 Token expired or invalid, logging out user...');
-        // Token is expired or invalid, trigger logout
-        if (this.logoutCallback) {
-          this.logoutCallback();
-        }
-        return { error: 'Session expired. Please log in again.' };
-      }
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -200,12 +177,9 @@ class ApiClient {
   }
 
   async updateUserRole(userId: number, role: string): Promise<ApiResponse<any>> {
-    console.log(`🌐 API Client: Sending role update - User: ${userId}, Role: "${role}"`);
-    const payload = { role };
-    console.log('📦 API Client: Request payload:', JSON.stringify(payload));
     return this.request(`/admin/users/${userId}/role`, {
       method: 'PUT',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ role }),
     });
   }
 

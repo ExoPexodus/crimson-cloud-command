@@ -51,11 +51,9 @@ export default function UsersPage() {
   };
 
   const updateUserRole = async (userId: number, newRole: string) => {
-    console.log(`🔧 Frontend: Updating user ${userId} role to: "${newRole}"`);
     setUpdatingUser(userId);
     try {
       const result = await apiClient.updateUserRole(userId, newRole);
-      console.log('✅ Frontend: Update role result:', result);
       if (result.data) {
         setUsers(users.map(user => 
           user.id === userId ? { ...user, role: newRole as any } : user
@@ -66,7 +64,7 @@ export default function UsersPage() {
         });
       }
     } catch (error) {
-      console.error('❌ Frontend: Failed to update user role:', error);
+      console.error('Failed to update user role:', error);
       toast({
         title: "Error",
         description: "Failed to update user role",

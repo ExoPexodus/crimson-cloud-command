@@ -35,7 +35,7 @@ class Node(Base):
     region = Column(String(100), nullable=False)
     ip_address = Column(String(45), nullable=True)
     description = Column(Text, nullable=True)
-    status = Column(SQLEnum(NodeStatus, name='nodestatus', native_enum=False), default=NodeStatus.INACTIVE)
+    status = Column(SQLEnum(NodeStatus), default=NodeStatus.INACTIVE)
     api_key_hash = Column(String(64), nullable=True, unique=True)
     last_heartbeat = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -58,7 +58,7 @@ class Pool(Base):
     min_instances = Column(Integer, default=1)
     max_instances = Column(Integer, default=10)
     current_instances = Column(Integer, default=1)
-    status = Column(SQLEnum(PoolStatus, name='poolstatus', native_enum=False), default=PoolStatus.HEALTHY)
+    status = Column(SQLEnum(PoolStatus), default=PoolStatus.HEALTHY)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -103,8 +103,8 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=True)  # Nullable for Keycloak users
     full_name = Column(String(255), nullable=False)
-    role = Column(SQLEnum(UserRole, name='userrole', native_enum=False), default=UserRole.USER)
-    auth_provider = Column(SQLEnum(AuthProvider, name='authprovider', native_enum=False), default=AuthProvider.LOCAL)
+    role = Column(SQLEnum(UserRole), default=UserRole.USER)
+    auth_provider = Column(SQLEnum(AuthProvider), default=AuthProvider.LOCAL)
     keycloak_user_id = Column(String(255), nullable=True, unique=True, index=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -171,17 +171,6 @@ class UserResponse(BaseModel):
 
 class UserUpdateRole(BaseModel):
     role: UserRole
-
-    @field_validator('role', mode='before')
-    @classmethod
-    def validate_role(cls, v):
-        if isinstance(v, str):
-            # Convert string to UserRole enum
-            try:
-                return UserRole(v.lower())
-            except ValueError:
-                raise ValueError(f"Invalid role: {v}. Must be one of: {[r.value for r in UserRole]}")
-        return v
 
 class UserListResponse(BaseModel):
     id: int
