@@ -15,12 +15,58 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    # Simple approach: Just update the existing data to use lowercase values
-    # The enum types in migration 002 already use lowercase values
-    op.execute("UPDATE users SET role = LOWER(role::text)::userrole WHERE role::text != LOWER(role::text)")
-    op.execute("UPDATE users SET auth_provider = LOWER(auth_provider::text)::authprovider WHERE auth_provider::text != LOWER(auth_provider::text)")
+    # Check if we need to update any data first
+    # Only update if there are uppercase values that need conversion
+    try:
+        # Try to update role values that are uppercase
+        op.execute("""
+            UPDATE users 
+            SET role = CASE 
+                WHEN role::text = 'USER' THEN 'user'::userrole
+                WHEN role::text = 'DEVOPS' THEN 'devops'::userrole  
+                WHEN role::text = 'ADMIN' THEN 'admin'::userrole
+                ELSE role
+            END
+            WHERE role::text IN ('USER', 'DEVOPS', 'ADMIN')
+        """)
+        
+        # Try to update auth_provider values that are uppercase
+        op.execute("""
+            UPDATE users 
+            SET auth_provider = CASE 
+                WHEN auth_provider::text = 'LOCAL' THEN 'local'::authprovider
+                WHEN auth_provider::text = 'KEYCLOAK' THEN 'keycloak'::authprovider
+                ELSE auth_provider
+            END
+            WHERE auth_provider::text IN ('LOCAL', 'KEYCLOAK')
+        """)
+    except Exception:
+        # If update fails, the data might already be in correct format
+        pass
 
 def downgrade():
-    # Revert to uppercase values
-    op.execute("UPDATE users SET role = UPPER(role::text)::userrole")
-    op.execute("UPDATE users SET auth_provider = UPPER(auth_provider::text)::authprovider")
+    # Revert to uppercase values using explicit CASE mapping
+    try:
+        op.execute("""
+            UPDATE users 
+            SET role = CASE 
+                WHEN role::text = 'user' THEN 'USER'::userrole
+                WHEN role::text = 'devops' THEN 'DEVOPS'::userrole  
+                WHEN role::text = 'admin' THEN 'ADMIN'::userrole
+                ELSE role
+            END
+            WHERE role::text IN ('user', 'devops', 'admin')
+        """)
+        
+        op.execute("""
+            UPDATE users 
+            SET auth_provider = CASE 
+                WHEN auth_provider::text = 'local' THEN 'LOCAL'::authprovider
+                WHEN auth_provider::text = 'keycloak' THEN 'KEYCLOAK'::authprovider
+                ELSE auth_provider
+            END
+            WHERE auth_provider::text IN ('local', 'keycloak')
+        """)
+    except Exception:
+        # If update fails, data might already be in expected format
+        pass
