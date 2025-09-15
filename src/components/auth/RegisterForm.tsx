@@ -15,6 +15,7 @@ interface RegisterFormProps {
 export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -22,6 +23,26 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password confirmation
+    if (password !== confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'Passwords do not match. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast({
+        title: 'Error',
+        description: 'Password must be at least 6 characters long.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -95,13 +116,33 @@ export function RegisterForm({ onBackToLogin }: RegisterFormProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="bg-dark-bg/60 border-dark-bg-light/40 text-white focus-visible:ring-dark-blue-500"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className={`bg-dark-bg/60 border-dark-bg-light/40 text-white focus-visible:ring-dark-blue-500 ${
+                  confirmPassword && password !== confirmPassword 
+                    ? 'border-red-500 focus-visible:ring-red-500' 
+                    : ''
+                }`}
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-sm text-red-500">Passwords do not match</p>
+              )}
             </div>
             <Button
               type="submit"
               className="w-full bg-dark-blue-600 hover:bg-dark-blue-700 text-white shadow-md"
-              disabled={loading}
+              disabled={loading || (confirmPassword && password !== confirmPassword)}
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>

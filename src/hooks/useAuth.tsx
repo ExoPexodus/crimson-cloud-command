@@ -31,7 +31,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_data');
+    apiClient.setToken(null);
+  };
+
   useEffect(() => {
+    // Set up the logout callback for the API client
+    apiClient.setLogoutCallback(logout);
+    
     // Check if user is already logged in
     const token = localStorage.getItem('access_token');
     const userData = localStorage.getItem('user_data');
@@ -117,13 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Registration failed:', error);
       return false;
     }
-  };
-
-  const logout = () => {
-    apiClient.logout();
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('user_data');
   };
 
   const hasRole = (role: 'user' | 'devops' | 'admin'): boolean => {
