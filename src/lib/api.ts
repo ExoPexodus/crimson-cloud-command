@@ -177,9 +177,12 @@ class ApiClient {
   }
 
   async updateUserRole(userId: number, role: string): Promise<ApiResponse<any>> {
+    console.log(`🌐 API Client: Sending role update - User: ${userId}, Role: "${role}"`);
+    const payload = { role };
+    console.log('📦 API Client: Request payload:', JSON.stringify(payload));
     return this.request(`/admin/users/${userId}/role`, {
       method: 'PUT',
-      body: JSON.stringify({ role }),
+      body: JSON.stringify(payload),
     });
   }
 

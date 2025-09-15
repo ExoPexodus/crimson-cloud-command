@@ -654,6 +654,11 @@ async def get_all_users(db: Session = Depends(get_db), current_user = Depends(ge
 async def update_user_role(user_id: int, role_update: UserUpdateRole, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Update user role (admin only, local users only)"""
     try:
+        logger.info(f"🔧 Update user role called - User ID: {user_id}")
+        logger.info(f"📋 Role update data: {role_update}")
+        logger.info(f"📋 Role value: {role_update.role}")
+        logger.info(f"📋 Role type: {type(role_update.role)}")
+        
         if not RoleService.has_role(current_user, UserRole.ADMIN):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -664,12 +669,18 @@ async def update_user_role(user_id: int, role_update: UserUpdateRole, db: Sessio
             updated_user = UserService.update_user_role(db, user_id, role_update.role)
             if not updated_user:
                 raise HTTPException(status_code=404, detail="User not found")
+            logger.info(f"✅ User role updated successfully: {updated_user.email} -> {updated_user.role}")
             return updated_user
         except ValueError as e:
+            logger.error(f"❌ ValueError in role update: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
             
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Update user role error: {str(e)}")
+        logger.error(f"❌ Update user role error: {str(e)}")
+        logger.error(f"📊 Role update object: {role_update}")
+        logger.error(f"📊 Role update dict: {role_update.__dict__ if hasattr(role_update, '__dict__') else 'No __dict__'}")
         raise HTTPException(status_code=500, detail=f"Failed to update user role: {str(e)}")
 
 @app.get("/admin/users/{user_id}", response_model=UserResponse)
