@@ -29,6 +29,11 @@ services:
       - .env
     networks:
       - autoscaling_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: npm run dev -- --host 0.0.0.0 --port 3000
     depends_on:
       - backend
