@@ -57,9 +57,7 @@ services:
     depends_on:
       - backend
 
-volumes:
-  postgres_data:
-
 networks:
   autoscaling_network:
     driver: bridge
+  
