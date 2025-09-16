@@ -23,6 +23,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy startup script
+COPY startup.sh /startup.sh
+RUN chmod +x /startup.sh
+
 EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/startup.sh"]

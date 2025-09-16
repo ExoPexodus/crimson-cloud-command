@@ -1,5 +1,6 @@
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
+const RUNTIME_API_URL = '__VITE_API_URL__';
+const API_BASE_URL = RUNTIME_API_URL !== '__VITE_API_URL__' ? RUNTIME_API_URL :
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
     ? `http://${window.location.hostname}:8000` 
     : 'http://localhost:8000');
