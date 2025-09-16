@@ -4,6 +4,9 @@ version: '3.8'
 services:
 
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: autoscaling_backend:latest
     container_name: autoscaling_backend
     restart: unless-stopped
@@ -27,6 +30,9 @@ services:
       start_period: 40s
 
   frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
     image: autoscaling_frontend:latest
     container_name: autoscaling_frontend
     ports:
