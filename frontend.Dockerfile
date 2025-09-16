@@ -15,14 +15,17 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine AS production
+FROM node:18-alpine AS production
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Install production dependencies for proxy server
+RUN npm install express http-proxy-middleware
+
+# Copy built application and proxy server
+COPY --from=builder /app/dist ./dist
+COPY proxy-server.js ./
 
 EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "proxy-server.js"]
