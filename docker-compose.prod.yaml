@@ -4,9 +4,6 @@ version: '3.8'
 services:
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     image: autoscaling_backend:latest
     container_name: autoscaling_backend
     restart: unless-stopped
@@ -21,18 +18,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level debug --access-log
 
   frontend:
-    build:
-      context: .
-      dockerfile: frontend.Dockerfile
     image: autoscaling_frontend:latest
     container_name: autoscaling_frontend
     ports:
@@ -46,16 +34,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    command: npm run dev -- --host 0.0.0.0 --port 3000
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
 networks:
   autoscaling_network:
