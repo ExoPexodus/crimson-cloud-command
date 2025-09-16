@@ -15,17 +15,18 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM nginx:alpine AS production
 
-WORKDIR /app
+# Install envsubst for environment variable substitution
+RUN apk add --no-cache gettext
 
-# Install production dependencies for proxy server
-RUN npm install express http-proxy-middleware
+# Copy built application from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy built application and proxy server
-COPY --from=builder /app/dist ./dist
-COPY proxy-server.js ./
+# Copy nginx configuration template
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 3000
 
-CMD ["node", "proxy-server.js"]
+# Use nginx with environment variable substitution
+CMD ["nginx", "-g", "daemon off;"]
