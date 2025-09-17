@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api";
 
 interface PoolAnalytics {
   id: number;
+  node_id: number;
   timestamp: string;
   current_instances: number;
   avg_cpu_utilization: number;
@@ -20,15 +21,21 @@ export function MetricsChartsSection() {
   const fetchMetricsData = async () => {
     try {
       setLoading(true);
-      const hoursDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60));
-      const response = await apiClient.getPoolAnalytics(undefined, hoursDiff);
       
-      if (response.data) {
+      // Get both nodes and pool analytics data
+      const [nodesResponse, poolResponse] = await Promise.all([
+        apiClient.getNodes(),
+        apiClient.getPoolAnalytics()
+      ]);
+      
+      if (nodesResponse.data && poolResponse.data) {
         // Filter data by date range
-        const filteredData = response.data.filter((item: PoolAnalytics) => {
+        const filteredData = poolResponse.data.filter((item: PoolAnalytics) => {
           const itemDate = new Date(item.timestamp);
           return itemDate >= dateRange.from && itemDate <= dateRange.to;
         });
+
+        const hoursDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60));
 
         // Group data by appropriate time intervals based on range
         const getTimeKey = (timestamp: string) => {
@@ -47,27 +54,37 @@ export function MetricsChartsSection() {
           }
         };
 
-        const groupedData = filteredData.reduce((acc: Record<string, { pools: Set<number>; instances: number }>, item: PoolAnalytics) => {
+        const groupedData = filteredData.reduce((acc: Record<string, { activeNodes: Set<number>; totalInstances: number }>, item: PoolAnalytics) => {
           const timeKey = getTimeKey(item.timestamp);
           
           if (!acc[timeKey]) {
-            acc[timeKey] = { pools: new Set(), instances: 0 };
+            acc[timeKey] = { activeNodes: new Set(), totalInstances: 0 };
           }
-          acc[timeKey].pools.add(item.id);
-          acc[timeKey].instances = Math.max(acc[timeKey].instances, item.current_instances);
+          
+          // Find the node that corresponds to this pool analytics entry
+          const node = nodesResponse.data.find(n => n.id === item.node_id);
+          if (node) {
+            acc[timeKey].activeNodes.add(node.id);
+            acc[timeKey].totalInstances += item.current_instances || 0;
+          }
+          
           return acc;
         }, {});
 
         // Convert to chart data format
-        const poolChartData = Object.entries(groupedData).map(([time, data]) => ({
-          name: time,
-          value: data.pools.size
-        }));
+        const poolChartData = Object.entries(groupedData)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([time, data]) => ({
+            name: time,
+            value: data.activeNodes.size // Active pools = active nodes
+          }));
 
-        const instanceChartData = Object.entries(groupedData).map(([time, data]) => ({
-          name: time,
-          value: data.instances
-        }));
+        const instanceChartData = Object.entries(groupedData)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([time, data]) => ({
+            name: time,
+            value: data.totalInstances
+          }));
 
         setPoolActivityData(poolChartData);
         setInstanceCountData(instanceChartData);

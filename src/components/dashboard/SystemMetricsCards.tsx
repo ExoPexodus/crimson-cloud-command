@@ -58,7 +58,7 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
       <Card className="glass-card border-dark-bg-light/50 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Total Running Instances</p>
+            <p className="text-sm text-muted-foreground">Currently Running Instances</p>
             <h3 className="text-2xl font-bold mt-1">
               {loading ? "..." : analytics?.total_current_instances || 0}
             </h3>
