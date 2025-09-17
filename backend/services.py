@@ -500,27 +500,48 @@ class AnalyticsService:
         if not recent_analytics:
             return
         
-        # Calculate current metrics
-        total_active_pools = len([a for a in recent_analytics if a.is_active])
-        total_current_instances = sum(a.current_instances for a in recent_analytics)
-        total_active_instances = sum(a.active_instances for a in recent_analytics)
+        # Calculate current metrics - group by unique pools
+        unique_pools = {}
+        for analytics in recent_analytics:
+            pool_key = f"{analytics.pool_id}"  # Assuming pool_id exists, or use node_id
+            if pool_key not in unique_pools or analytics.timestamp > unique_pools[pool_key].timestamp:
+                unique_pools[pool_key] = analytics
         
-        avg_cpu = sum(a.avg_cpu_utilization for a in recent_analytics) / len(recent_analytics)
-        avg_memory = sum(a.avg_memory_utilization for a in recent_analytics) / len(recent_analytics)
-        max_cpu = max(a.max_cpu_utilization or 0 for a in recent_analytics)
-        max_memory = max(a.max_memory_utilization or 0 for a in recent_analytics)
+        active_pool_analytics = list(unique_pools.values())
+        total_active_pools = len([a for a in active_pool_analytics if a.is_active])
+        total_current_instances = sum(a.current_instances for a in active_pool_analytics)
+        total_active_instances = sum(a.active_instances for a in active_pool_analytics)
         
-        # Calculate 24h peaks
+        if active_pool_analytics:
+            avg_cpu = sum(a.avg_cpu_utilization for a in active_pool_analytics) / len(active_pool_analytics)
+            avg_memory = sum(a.avg_memory_utilization for a in active_pool_analytics) / len(active_pool_analytics)
+            max_cpu = max(a.max_cpu_utilization or 0 for a in active_pool_analytics)
+            max_memory = max(a.max_memory_utilization or 0 for a in active_pool_analytics)
+        else:
+            avg_cpu = avg_memory = max_cpu = max_memory = 0
+        
+        # Calculate 24h peaks - get the maximum instances that were running simultaneously
         yesterday = now - timedelta(hours=24)
-        peak_instances_24h = db.query(func.max(PoolAnalytics.current_instances)).filter(
-            PoolAnalytics.timestamp >= yesterday
-        ).scalar() or 0
         
-        max_active_pools_24h = db.query(func.count(PoolAnalytics.id)).filter(
+        # Get hourly snapshots and find the maximum total instances across all pools
+        hourly_totals = db.query(
+            func.date_trunc('hour', PoolAnalytics.timestamp).label('hour'),
+            func.sum(PoolAnalytics.current_instances).label('total_instances')
+        ).filter(
+            PoolAnalytics.timestamp >= yesterday
+        ).group_by(func.date_trunc('hour', PoolAnalytics.timestamp)).all()
+        
+        peak_instances_24h = max((total.total_instances for total in hourly_totals), default=0)
+        
+        # Get maximum active pools in any hour in the last 24h
+        hourly_pool_counts = db.query(
+            func.date_trunc('hour', PoolAnalytics.timestamp).label('hour'),
+            func.count(func.distinct(PoolAnalytics.id)).label('pool_count')
+        ).filter(
             and_(PoolAnalytics.timestamp >= yesterday, PoolAnalytics.is_active == True)
-        ).group_by(func.date_trunc('hour', PoolAnalytics.timestamp)).order_by(
-            func.count(PoolAnalytics.id).desc()
-        ).first() or 0
+        ).group_by(func.date_trunc('hour', PoolAnalytics.timestamp)).all()
+        
+        max_active_pools_24h = max((count.pool_count for count in hourly_pool_counts), default=0)
         
         # Count active nodes
         active_nodes = db.query(Node).filter(

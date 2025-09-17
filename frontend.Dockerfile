@@ -15,23 +15,18 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM nginx:alpine AS production
 
-WORKDIR /app
-
-# Install serve globally for serving the built app
-RUN npm install -g serve
+# Install envsubst for environment variable substitution
+RUN apk add --no-cache gettext
 
 # Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-
-USER nextjs
+# Copy nginx configuration template
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000", "--host", "0.0.0.0", "-n"]
+# Use nginx with environment variable substitution
+CMD ["nginx", "-g", "daemon off;"]

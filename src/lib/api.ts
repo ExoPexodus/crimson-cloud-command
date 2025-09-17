@@ -1,8 +1,6 @@
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-    ? `http://${window.location.hostname}:8000` 
-    : 'http://localhost:8000');
+// API Configuration - Use local proxy for internal communication
+const API_BASE_URL = '/api';
 
 interface ApiResponse<T> {
   data?: T;

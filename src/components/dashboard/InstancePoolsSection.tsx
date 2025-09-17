@@ -69,18 +69,26 @@ export function InstancePoolsSection() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleScaleAction = async (nodeId: number, action: 'up' | 'down', nodeName: string) => {
+  const handleRefreshNode = async (nodeId: number) => {
     try {
-      // This would typically call an API to scale the node's instance pool
-      // For now, just show a toast
-      toast({
-        title: `Scale ${action === 'up' ? 'Up' : 'Down'}`,
-        description: `Scaling ${action} instances for ${nodeName}`,
-      });
+      // Fetch updated analytics for the specific node
+      const analyticsResponse = await apiClient.getNodeAnalytics(nodeId);
+      if (analyticsResponse.data) {
+        setNodeAnalytics(prev => ({
+          ...prev,
+          [nodeId]: analyticsResponse.data
+        }));
+        
+        const node = nodes.find(n => n.id === nodeId);
+        toast({
+          title: "Refreshed",
+          description: `Updated data for ${node?.name || 'node'}`,
+        });
+      }
     } catch (error) {
       toast({
-        title: "Error",
-        description: `Failed to scale ${nodeName}`,
+        title: "Error", 
+        description: "Failed to refresh node data",
         variant: "destructive",
       });
     }
@@ -125,13 +133,13 @@ export function InstancePoolsSection() {
           const getNodeStatus = (): "healthy" | "warning" | "error" | "inactive" => {
             if (!node.last_heartbeat) return "inactive";
             
-            const lastHeartbeat = new Date(node.last_heartbeat);
+            const lastHeartbeat = new Date(node.last_heartbeat + 'Z'); // Ensure UTC
             const now = new Date();
             const timeDiff = now.getTime() - lastHeartbeat.getTime();
             const minutesDiff = timeDiff / (1000 * 60);
             
-            if (minutesDiff > 5) return "error";
-            if (minutesDiff > 2) return "warning";
+            if (minutesDiff > 10) return "error";
+            if (minutesDiff > 5) return "warning";
             return "healthy";
           };
           
@@ -145,8 +153,7 @@ export function InstancePoolsSection() {
               region={node.region}
               cpuUsage={Math.round(analytics.avg_cpu_utilization)}
               memoryUsage={Math.round(analytics.avg_memory_utilization)}
-              onScaleUp={() => handleScaleAction(node.id, 'up', node.name)}
-              onScaleDown={() => handleScaleAction(node.id, 'down', node.name)}
+              onRefresh={() => handleRefreshNode(node.id)}
             />
           );
         })}
