@@ -13,8 +13,7 @@ interface InstancePoolCardProps {
   region: string;
   cpuUsage: number;
   memoryUsage: number;
-  onScaleUp?: () => void;
-  onScaleDown?: () => void;
+  onRefresh?: () => void;
 }
 
 export function InstancePoolCard({
@@ -25,8 +24,7 @@ export function InstancePoolCard({
   region,
   cpuUsage,
   memoryUsage,
-  onScaleUp,
-  onScaleDown
+  onRefresh
 }: InstancePoolCardProps) {
   return (
     <Card className="glass-card overflow-hidden hover:shadow-dark-blue-900/10 transition-all duration-300">
@@ -78,20 +76,12 @@ export function InstancePoolCard({
       <CardFooter className="pt-0 gap-2 flex justify-center border-t border-dark-bg-light/30 p-2">
         <Button
           variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-blue-800/20"
-          onClick={onScaleDown}
+          size="sm"
+          className="h-8 px-3 text-muted-foreground hover:text-white hover:bg-dark-blue-800/20"
+          onClick={onRefresh}
         >
-          <RefreshCw size={14} />
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-dark-blue-800/20"
-          onClick={onScaleUp}
-        >
-          <Power size={14} />
+          <RefreshCw size={14} className="mr-1" />
+          Refresh
         </Button>
       </CardFooter>
     </Card>

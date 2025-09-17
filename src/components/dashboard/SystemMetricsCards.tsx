@@ -34,7 +34,7 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
           </div>
         </div>
         <div className="text-xs text-dark-blue-300 mt-2">
-          Max: {analytics?.max_active_pools_24h || 0} pools today
+          Max today: {analytics?.max_active_pools_24h || 0} pools
         </div>
       </Card>
       
@@ -58,7 +58,7 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
       <Card className="glass-card border-dark-bg-light/50 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Current Total Instances</p>
+            <p className="text-sm text-muted-foreground">Total Running Instances</p>
             <h3 className="text-2xl font-bold mt-1">
               {loading ? "..." : analytics?.total_current_instances || 0}
             </h3>
@@ -67,7 +67,7 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
             <Server size={20} className="text-dark-blue-400" />
           </div>
         </div>
-        <div className="text-xs text-muted-foreground mt-2">
+        <div className="text-xs text-dark-blue-300 mt-2">
           Active nodes: {analytics?.active_nodes || 0}
         </div>
       </Card>
