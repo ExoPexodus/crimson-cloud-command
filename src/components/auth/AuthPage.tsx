@@ -1,14 +1,8 @@
 
-import { useState } from 'react';
 import { LoginForm } from './LoginForm';
-import { RegisterForm } from './RegisterForm';
+// import { RegisterForm } from './RegisterForm'; // Commented out - only admin can create users
 
 export function AuthPage() {
-  const [showRegister, setShowRegister] = useState(false);
-
-  return showRegister ? (
-    <RegisterForm onBackToLogin={() => setShowRegister(false)} />
-  ) : (
-    <LoginForm onShowRegister={() => setShowRegister(true)} />
-  );
+  // Registration disabled - only admin can create users
+  return <LoginForm />;
 }
