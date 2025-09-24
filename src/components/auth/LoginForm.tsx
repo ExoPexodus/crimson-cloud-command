@@ -10,8 +10,11 @@ import { Server } from 'lucide-react';
 import { KeycloakLoginButton } from './KeycloakLoginButton';
 import { Separator } from '@/components/ui/separator';
 
-// Registration disabled - only admin can create users
-export function LoginForm() {
+interface LoginFormProps {
+  onShowRegister: () => void;
+}
+
+export function LoginForm({ onShowRegister }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -109,10 +112,16 @@ export function LoginForm() {
             </div>
           </div>
           
-          {/* Registration disabled - contact admin for account creation */}
           <div className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground">
-              Need an account? Contact your administrator.
+            <p className="text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Button
+                variant="link"
+                onClick={onShowRegister}
+                className="text-dark-blue-400 hover:text-dark-blue-300 p-0 h-auto font-normal"
+              >
+                Create one here
+              </Button>
             </p>
           </div>
         </CardContent>
