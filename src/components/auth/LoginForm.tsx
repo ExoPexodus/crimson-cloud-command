@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,11 +9,7 @@ import { Server } from 'lucide-react';
 import { KeycloakLoginButton } from './KeycloakLoginButton';
 import { Separator } from '@/components/ui/separator';
 
-interface LoginFormProps {
-  onShowRegister: () => void;
-}
-
-export function LoginForm({ onShowRegister }: LoginFormProps) {
+export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -110,19 +105,6 @@ export function LoginForm({ onShowRegister }: LoginFormProps) {
             <div className="mt-6">
               <KeycloakLoginButton />
             </div>
-          </div>
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Button
-                variant="link"
-                onClick={onShowRegister}
-                className="text-dark-blue-400 hover:text-dark-blue-300 p-0 h-auto font-normal"
-              >
-                Create one here
-              </Button>
-            </p>
           </div>
         </CardContent>
       </Card>

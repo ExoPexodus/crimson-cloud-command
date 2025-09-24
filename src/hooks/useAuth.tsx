@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/api';
 
@@ -18,7 +17,6 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   loginWithKeycloak: (code: string, redirectUri: string) => Promise<boolean>;
-  register: (email: string, password: string, fullName: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
   hasRole: (role: 'user' | 'devops' | 'admin') => boolean;
@@ -70,26 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await apiClient.loginWithKeycloak(code, redirectUri);
       if (result.data) {
-        // Log all Keycloak data to browser console
         console.group('🔐 Keycloak Login Success');
         console.log('User Data:', result.data.user);
         console.log('Access Token:', result.data.access_token);
-        
-        // Log any additional Keycloak-specific data if present
-        if ((result.data as any).keycloak_data) {
-          console.log('Keycloak Data:', (result.data as any).keycloak_data);
-        }
-        if ((result.data as any).roles) {
-          console.log('Keycloak Roles:', (result.data as any).roles);
-        }
-        if ((result.data as any).groups) {
-          console.log('Keycloak Groups:', (result.data as any).groups);
-        }
-        if ((result.data as any).token_data) {
-          console.log('Token Data:', (result.data as any).token_data);
-        }
-        
-        // Log the entire response for debugging
+        if ((result.data as any).keycloak_data) console.log('Keycloak Data:', (result.data as any).keycloak_data);
+        if ((result.data as any).roles) console.log('Keycloak Roles:', (result.data as any).roles);
+        if ((result.data as any).groups) console.log('Keycloak Groups:', (result.data as any).groups);
+        if ((result.data as any).token_data) console.log('Token Data:', (result.data as any).token_data);
         console.log('Full Response:', result.data);
         console.groupEnd();
         
@@ -105,20 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, fullName: string): Promise<boolean> => {
-    try {
-      const result = await apiClient.register(email, password, fullName);
-      if (result.data) {
-        // Auto-login after registration
-        return await login(email, password);
-      }
-      return false;
-    } catch (error) {
-      console.error('Registration failed:', error);
-      return false;
-    }
-  };
-
   const logout = () => {
     apiClient.logout();
     setIsAuthenticated(false);
@@ -129,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasRole = (role: 'user' | 'devops' | 'admin'): boolean => {
     if (!user) return false;
     
-    const roleHierarchy = { user: 1, devops: 2, admin: 3 };
+    const roleHierarchy = { user: 1, devops: 2, admin: 3 } as const;
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[role] || 0;
     
@@ -142,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, 
       login, 
       loginWithKeycloak, 
-      register, 
       logout, 
       loading, 
       hasRole 
