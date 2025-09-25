@@ -19,12 +19,14 @@ def evaluate_metrics(collector, thresholds, scaling_limits, scheduler_active_cal
             logging.error(
                 f"Invalid metrics received: CPU={avg_cpu}, RAM={avg_ram}. Skipping scaling."
             )
+            sys.exit(1)
             return
 
         if avg_cpu == 0 and avg_ram == 0:
             logging.warning(
                 f"No valid metric data available for pool {collector.instance_pool_id}. Skipping scaling."
             )
+            sys.exit(1)
             return
 
         # Log metrics
