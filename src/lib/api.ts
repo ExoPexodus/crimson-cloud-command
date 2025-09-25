@@ -1,6 +1,12 @@
 
-// API Configuration - Use local proxy for internal communication
-const API_BASE_URL = '/api';
+import { config } from './config';
+
+// API Configuration - Use runtime config
+const getApiBaseUrl = () => {
+  // Use local proxy in production, but allow override
+  const baseUrl = config.apiBaseUrl;
+  return baseUrl.startsWith('http') ? baseUrl.replace(baseUrl.split('/').slice(0, 3).join('/'), '') + '/api' : '/api';
+};
 
 interface ApiResponse<T> {
   data?: T;
@@ -292,5 +298,5 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL);
+export const apiClient = new ApiClient(getApiBaseUrl());
 export default apiClient;
