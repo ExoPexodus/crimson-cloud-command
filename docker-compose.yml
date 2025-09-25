@@ -48,7 +48,7 @@ services:
       dockerfile: frontend.Dockerfile
     container_name: autoscaling_frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
     env_file:
       - .env
     networks:
