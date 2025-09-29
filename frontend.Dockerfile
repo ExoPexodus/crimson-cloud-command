@@ -38,7 +38,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration template
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 3000
 
-# Use nginx with environment variable substitution
-CMD ["nginx", "-g", "daemon off;"]
+# Use custom entrypoint for runtime config injection
+ENTRYPOINT ["/docker-entrypoint.sh"]
