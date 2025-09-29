@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
-import { getKeycloakConfig } from '@/lib/runtimeConfig';
 
 export function KeycloakLoginButton() {
   const { loginWithKeycloak } = useAuth();
@@ -10,8 +9,10 @@ export function KeycloakLoginButton() {
   const handleKeycloakLogin = () => {
     setIsLoading(true);
     
-    // Get Keycloak configuration from runtime config
-    const { url: keycloakUrl, realm, clientId } = getKeycloakConfig();
+    // Get Keycloak configuration from environment
+    const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL;
+    const realm = import.meta.env.VITE_KEYCLOAK_REALM;
+    const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID;
     
     if (!keycloakUrl || !realm || !clientId) {
       console.error('Keycloak configuration missing');

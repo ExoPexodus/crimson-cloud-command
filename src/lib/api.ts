@@ -1,16 +1,6 @@
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
-function getApiBaseUrl(): string {
-  // In production (when served by nginx), use relative API path for proxying
-  if (import.meta.env.PROD) {
-    return '/api';
-  }
-  
-  // In development, use the full backend URL with /api path
-  return API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
-}
+// API Configuration - Use local proxy for internal communication
+const API_BASE_URL = '/api';
 
 interface ApiResponse<T> {
   data?: T;
@@ -302,5 +292,5 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(getApiBaseUrl());
+export const apiClient = new ApiClient(API_BASE_URL);
 export default apiClient;
