@@ -1,17 +1,6 @@
 
-import { config } from './config';
-
-// API Configuration - Use runtime config
-const getApiBaseUrl = (): string => {
-  // In production (built app), use relative path for nginx proxy
-  if (!import.meta.env.DEV) {
-    return '/api';
-  }
-  
-  // Development mode - use direct backend URL
-  const baseUrl = config.apiBaseUrl;
-  return baseUrl ? baseUrl.replace(/\/$/, '') + '/api' : 'http://localhost:8000/api';
-};
+// API Configuration - Use local proxy for internal communication
+const API_BASE_URL = '/api';
 
 interface ApiResponse<T> {
   data?: T;
@@ -303,5 +292,5 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(getApiBaseUrl());
+export const apiClient = new ApiClient(API_BASE_URL);
 export default apiClient;
