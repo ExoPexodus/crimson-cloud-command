@@ -1,13 +1,16 @@
-
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import JWTError, jwt
+
+# Added imports for modules used below
 import os
-import hashlib
 import json
+import hashlib
+import yaml
+import logging
 
 from models import (
     Node, Pool, Metric, Schedule, User, AuditLog, NodeConfiguration, 
@@ -23,7 +26,12 @@ from schemas import (
 from auth_middleware import APIKeyAuth
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    # Avoid raising on >72 bytes; bcrypt will effectively use first 72 bytes
+    bcrypt__truncate_error=False,
+)
 
 # JWT settings
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
@@ -33,7 +41,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 class AuthService:
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return pwd_context.verify(plain_password, hashed_password)
+        if not hashed_password:
+            return False
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Password verification error: {e}")
+            return False
     
     @staticmethod
     def get_password_hash(password: str) -> str:
@@ -49,7 +63,6 @@ class AuthService:
     
     @staticmethod
     def verify_token(token: str, db: Session):
-        import logging
         logger = logging.getLogger(__name__)
         
         logger.info(f"🔍 verify_token called with token: {token[:20]}...")
@@ -123,7 +136,6 @@ class AuthService:
     @staticmethod
     def handle_keycloak_user(db: Session, keycloak_data: dict, token: str):
         """Handle Keycloak user authentication and role mapping"""
-        import logging
         from keycloak_service import keycloak_service
         from role_service import RoleService
         
@@ -211,8 +223,20 @@ class AuthService:
     
     @staticmethod
     def authenticate_user(db: Session, email: str, password: str):
+        logger = logging.getLogger(__name__)
         user = db.query(User).filter(User.email == email).first()
-        if not user or not AuthService.verify_password(password, user.hashed_password):
+        if not user:
+            logger.warning(f"Local login failed: user not found for {email}")
+            return None
+        # Only local users with a stored password can use local login
+        if user.auth_provider != AuthProvider.LOCAL:
+            logger.warning(f"Local login blocked for non-local user (provider={user.auth_provider})")
+            return None
+        if not user.hashed_password:
+            logger.warning("Local login failed: no password set for user")
+            return None
+        if not AuthService.verify_password(password, user.hashed_password):
+            logger.warning("Local login failed: invalid password")
             return None
         return user
 

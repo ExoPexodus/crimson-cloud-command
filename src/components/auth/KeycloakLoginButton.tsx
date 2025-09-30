@@ -24,6 +24,9 @@ export function KeycloakLoginButton() {
         if (res.data) {
           console.log('✅ Loaded public config from backend:', res.data);
           setKcConfig(res.data);
+          if (!res.data.keycloak_enabled) {
+            console.warn('⚠️ Keycloak is not enabled by backend config. Button will be disabled.');
+          }
         } else {
           console.error('❌ Failed to load public config:', res.error);
           setConfigError(res.error || 'Failed to load runtime config');
@@ -102,13 +105,18 @@ export function KeycloakLoginButton() {
     }
   }, [loginWithKeycloak]);
 
+  const disabled = isLoading || (kcConfig && !kcConfig.keycloak_enabled);
+  const title = configError
+    ? `Config error: ${configError}`
+    : (kcConfig && !kcConfig.keycloak_enabled ? 'Keycloak is not enabled in backend config' : undefined);
+
   return (
     <Button 
       onClick={handleKeycloakLogin} 
-      disabled={isLoading}
+      disabled={disabled}
       variant="outline"
       className="w-full"
-      title={configError ? `Config error: ${configError}` : undefined}
+      title={title}
     >
       {isLoading ? 'Redirecting...' : 'Login with Keycloak'}
     </Button>
