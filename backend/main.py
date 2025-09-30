@@ -6,6 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 import uvicorn
 import logging
+import os
 
 from database import engine, get_db, SessionLocal
 import models
@@ -52,7 +53,6 @@ app = FastAPI(
 )
 
 # CORS middleware - must be added before other middleware
-import os
 cors_origins = os.getenv("CORS_ORIGINS", "*")
 if cors_origins == "*":
     allow_origins = ["*"]
@@ -110,6 +110,26 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "message": "Oracle Cloud Autoscaling Management API is running"}
+
+# Public runtime config - expose non-sensitive settings for frontend
+@app.get("/config")
+async def public_config():
+    try:
+        cfg = {
+            "keycloak_enabled": bool(os.getenv("KEYCLOAK_SERVER_URL") and os.getenv("KEYCLOAK_REALM") and os.getenv("KEYCLOAK_CLIENT_ID")),
+            "keycloak_url": os.getenv("KEYCLOAK_SERVER_URL") or "",
+            "keycloak_realm": os.getenv("KEYCLOAK_REALM") or "",
+            "keycloak_client_id": os.getenv("KEYCLOAK_CLIENT_ID") or "",
+            # Optionally expose API base for the SPA to know backend base
+            "api_base_url": os.getenv("VITE_API_URL") or ""
+        }
+        logger.info(
+            f"Serving public config: enabled={cfg['keycloak_enabled']}, url={cfg['keycloak_url']}, realm={cfg['keycloak_realm']}, client_id_set={'yes' if cfg['keycloak_client_id'] else 'no'}"
+        )
+        return cfg
+    except Exception as e:
+        logger.error(f"Failed to serve public config: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to load configuration")
 
 # Authentication endpoints
 @app.post("/auth/register", response_model=UserResponse)

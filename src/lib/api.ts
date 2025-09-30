@@ -1,4 +1,3 @@
-
 // API Configuration - Use local proxy for internal communication
 const API_BASE_URL = '/api';
 
@@ -55,6 +54,14 @@ interface NodeAnalytics {
   avg_memory_utilization: number;
   current_instances: number;
   max_instances: number;
+}
+
+interface PublicConfig {
+  keycloak_enabled: boolean;
+  keycloak_url: string;
+  keycloak_realm: string;
+  keycloak_client_id: string;
+  api_base_url?: string;
 }
 
 class ApiClient {
@@ -289,6 +296,11 @@ class ApiClient {
   // Health check
   async healthCheck(): Promise<ApiResponse<{ status: string; message: string }>> {
     return this.request('/health');
+  }
+
+  // Public runtime config
+  async getPublicConfig(): Promise<ApiResponse<PublicConfig>> {
+    return this.request<PublicConfig>('/config');
   }
 }
 
