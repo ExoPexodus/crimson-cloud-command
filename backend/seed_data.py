@@ -5,7 +5,11 @@ from models import User, UserRole, AuthProvider
 import logging
 
 # Set up password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=False
+)
 
 def create_default_admin(db: Session):
     """
