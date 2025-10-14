@@ -13,5 +13,12 @@ EOF
 echo "Generated runtime configuration:"
 cat /usr/share/nginx/html/config.js
 
+# Process nginx template with environment variable substitution
+echo "Processing nginx configuration template..."
+envsubst '${VITE_API_BASE_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+
+echo "Generated nginx configuration:"
+cat /etc/nginx/conf.d/default.conf
+
 # Start nginx
 exec nginx -g 'daemon off;'

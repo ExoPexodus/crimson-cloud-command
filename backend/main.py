@@ -121,7 +121,7 @@ async def public_config():
             "keycloak_realm": os.getenv("KEYCLOAK_REALM") or "",
             "keycloak_client_id": os.getenv("KEYCLOAK_CLIENT_ID") or "",
             # Optionally expose API base for the SPA to know backend base
-            "api_base_url": os.getenv("VITE_API_URL") or ""
+            "api_base_url": os.getenv("VITE_API_BASE_URL") or ""
         }
         logger.info(
             f"Serving public config: enabled={cfg['keycloak_enabled']}, url={cfg['keycloak_url']}, realm={cfg['keycloak_realm']}, client_id_set={'yes' if cfg['keycloak_client_id'] else 'no'}"
