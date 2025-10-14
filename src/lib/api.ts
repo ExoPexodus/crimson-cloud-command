@@ -1,5 +1,10 @@
-// API Configuration - Use local proxy for internal communication
-const API_BASE_URL = '/api';
+// API Configuration
+// In production, use relative /api path (proxied by nginx)
+// In development, use direct backend URL
+const isDevelopment = import.meta.env.DEV;
+const API_BASE_URL = isDevelopment 
+  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
+  : '/api';
 
 interface ApiResponse<T> {
   data?: T;

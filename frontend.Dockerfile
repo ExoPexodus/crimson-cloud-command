@@ -13,15 +13,9 @@ COPY . .
 
 # Build arguments for environment variables
 ARG VITE_API_BASE_URL
-ARG VITE_KEYCLOAK_URL
-ARG VITE_KEYCLOAK_REALM
-ARG VITE_KEYCLOAK_CLIENT_ID
 
 # Set environment variables for build
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
-ENV VITE_KEYCLOAK_REALM=$VITE_KEYCLOAK_REALM
-ENV VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
 
 # Build the application
 RUN npm run build
@@ -38,7 +32,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration template
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
+# Copy and set up entrypoint script for runtime configuration
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 3000
 
-# Use nginx with environment variable substitution
-CMD ["nginx", "-g", "daemon off;"]
+# Use custom entrypoint to generate runtime config before starting nginx
+ENTRYPOINT ["/docker-entrypoint.sh"]

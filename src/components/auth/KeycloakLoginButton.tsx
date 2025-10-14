@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
+import { runtimeConfig } from '@/lib/runtimeConfig';
 
 interface KCConfig {
   keycloak_enabled: boolean;
@@ -44,11 +45,11 @@ export function KeycloakLoginButton() {
     console.group('🔐 Keycloak Login');
 
     try {
-      // Prefer runtime config; fallback to build-time env if needed
+      // Priority: API config > Runtime config > Build-time env (dev only)
       const cfg = kcConfig;
-      const keycloakUrl = cfg?.keycloak_url || import.meta.env.VITE_KEYCLOAK_URL;
-      const realm = cfg?.keycloak_realm || import.meta.env.VITE_KEYCLOAK_REALM;
-      const clientId = cfg?.keycloak_client_id || import.meta.env.VITE_KEYCLOAK_CLIENT_ID;
+      const keycloakUrl = cfg?.keycloak_url || runtimeConfig.getKeycloakUrl();
+      const realm = cfg?.keycloak_realm || runtimeConfig.getKeycloakRealm();
+      const clientId = cfg?.keycloak_client_id || runtimeConfig.getKeycloakClientId();
 
       console.log('⚙️ Using Keycloak settings:', { keycloakUrl, realm, clientId, fromRuntime: !!cfg });
 
