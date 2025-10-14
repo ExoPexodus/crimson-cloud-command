@@ -164,12 +164,23 @@ async def login(email: str = Form(...), password: str = Form(...), db: Session =
 @app.post("/auth/keycloak/login", response_model=AuthResponse)
 async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depends(get_db)):
     """Login using Keycloak authorization code"""
+    import traceback
     try:
+        logger.info("=" * 80)
+        logger.info("🔐 KEYCLOAK LOGIN ENDPOINT CALLED")
+        logger.info("=" * 80)
+        logger.info(f"📋 Authorization Code: {login_request.code[:20]}...{login_request.code[-10:] if len(login_request.code) > 30 else login_request.code}")
+        logger.info(f"↩️  Redirect URI: {login_request.redirect_uri}")
+        logger.info("=" * 80)
+        
         if not keycloak_service.is_enabled():
+            logger.error("❌ Keycloak service not enabled")
             raise HTTPException(
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="Keycloak authentication is not configured"
             )
+        
+        logger.info("🔄 Attempting to exchange code for token...")
         
         # Exchange code for token
         token_data = keycloak_service.exchange_code_for_token(
@@ -178,31 +189,45 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
         )
         
         if not token_data:
+            logger.error("❌ Token exchange returned None")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Failed to exchange authorization code"
             )
         
+        logger.info("✅ Token exchange successful")
+        logger.info("🔄 Validating token...")
+        
         # Validate token and get/create user
         keycloak_data = keycloak_service.validate_token(token_data['access_token'])
         if not keycloak_data:
+            logger.error("❌ Token validation failed")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid Keycloak token"
             )
         
+        logger.info("✅ Token validated successfully")
+        logger.info(f"👤 User email: {keycloak_data.get('user_info', {}).get('email', 'N/A')}")
+        
         user = AuthService.handle_keycloak_user(db, keycloak_data, token_data['access_token'])
         if not user:
+            logger.error("❌ Failed to handle Keycloak user")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Failed to authenticate user"
             )
+        
+        logger.info("✅ User authenticated successfully")
         
         # Create local JWT token
         local_token = AuthService.create_keycloak_jwt(user)
         
         # Get user roles from Keycloak
         user_roles = keycloak_service.get_user_roles(token_data['access_token'])
+        
+        logger.info("✅ Keycloak login complete")
+        logger.info("=" * 80)
         
         return {
             "access_token": local_token,
@@ -217,7 +242,10 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Keycloak login error: {str(e)}")
+        logger.error("=" * 80)
+        logger.error(f"❌ Keycloak login error: {str(e)}")
+        logger.error(f"📚 Traceback:\n{traceback.format_exc()}")
+        logger.error("=" * 80)
         raise HTTPException(status_code=500, detail=f"Keycloak login failed: {str(e)}")
 
 # Node registration endpoint (for autoscaling nodes)

@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { apiClient } from '@/lib/api';
 import { runtimeConfig } from '@/lib/runtimeConfig';
+import { toast } from 'sonner';
 
 interface KCConfig {
   keycloak_enabled: boolean;
@@ -80,14 +81,18 @@ export function KeycloakLoginButton() {
   };
 
   // Handle Keycloak callback
+  const hasProcessedCode = useRef(false);
+  
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
 
-    if (code && window.location.pathname === '/auth/keycloak/callback') {
+    if (code && window.location.pathname === '/auth/keycloak/callback' && !hasProcessedCode.current) {
+      hasProcessedCode.current = true; // Prevent duplicate processing
       const redirectUri = `${window.location.origin}/auth/keycloak/callback`;
       console.group('🔄 Keycloak Callback');
-      console.log('📥 Received authorization code');
+      console.log('📥 Processing authorization code...');
+      console.log('↩️ Redirect URI:', redirectUri);
 
       loginWithKeycloak(code, redirectUri).then((success) => {
         if (success) {
@@ -95,11 +100,13 @@ export function KeycloakLoginButton() {
           window.history.replaceState({}, document.title, '/');
         } else {
           console.error('❌ Keycloak login failed');
+          toast.error('Login failed. Please try again.');
           window.history.replaceState({}, document.title, '/');
         }
         console.groupEnd();
       }).catch((err) => {
         console.error('❌ Error handling Keycloak callback:', err);
+        toast.error('An error occurred during login.');
         console.groupEnd();
         window.history.replaceState({}, document.title, '/');
       });

@@ -105,18 +105,52 @@ class KeycloakService:
     def exchange_code_for_token(self, code: str, redirect_uri: str) -> Optional[Dict[str, Any]]:
         """Exchange authorization code for access token"""
         if not self.is_enabled():
+            logger.error("❌ Keycloak client not enabled - cannot exchange code")
             return None
             
         try:
+            # Log all details for debugging
+            logger.info("=" * 80)
+            logger.info("🔄 KEYCLOAK CODE EXCHANGE ATTEMPT")
+            logger.info("=" * 80)
+            logger.info(f"📍 Server URL: {self.server_url}")
+            logger.info(f"🏰 Realm: {self.realm}")
+            logger.info(f"🔑 Client ID: {self.client_id}")
+            logger.info(f"🔐 Client Secret: {'SET (length: ' + str(len(self.client_secret)) + ')' if self.client_secret else 'NOT SET'}")
+            logger.info(f"📋 Authorization Code: {code[:20]}...{code[-10:] if len(code) > 30 else code}")
+            logger.info(f"↩️  Redirect URI: {redirect_uri}")
+            logger.info("=" * 80)
+            
+            # Attempt token exchange
             token = self.keycloak_client.token(
                 grant_type='authorization_code',
                 code=code,
                 redirect_uri=redirect_uri
             )
+            
+            logger.info("✅ Successfully exchanged code for token")
+            logger.info(f"🎫 Token type: {token.get('token_type', 'unknown')}")
+            logger.info(f"⏰ Expires in: {token.get('expires_in', 'unknown')} seconds")
+            
             return token
             
         except Exception as e:
-            logger.error(f"Failed to exchange code for token: {e}")
+            logger.error("=" * 80)
+            logger.error("❌ KEYCLOAK CODE EXCHANGE FAILED")
+            logger.error("=" * 80)
+            logger.error(f"🔥 Error Type: {type(e).__name__}")
+            logger.error(f"💬 Error Message: {str(e)}")
+            
+            # Try to extract more details from the exception
+            if hasattr(e, 'response'):
+                logger.error(f"📡 Response Status: {getattr(e.response, 'status_code', 'N/A')}")
+                logger.error(f"📨 Response Body: {getattr(e.response, 'text', 'N/A')}")
+            
+            # Log full traceback
+            import traceback
+            logger.error(f"📚 Full Traceback:\n{traceback.format_exc()}")
+            logger.error("=" * 80)
+            
             return None
 
 # Global instance
