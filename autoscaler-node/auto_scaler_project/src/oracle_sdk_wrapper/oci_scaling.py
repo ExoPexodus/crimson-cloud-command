@@ -1,6 +1,7 @@
 import oci
 import logging
 import time
+import sys
 from oci.core import ComputeManagementClient
 from instance_manager.instance_pool import get_instance_pool_details
 from user_config.config_manager import build_oci_config  # Ensure to use this
@@ -33,6 +34,7 @@ def scale_up(compute_management_client, instance_pool_id, compartment_id, max_li
         time.sleep(900)
     except Exception as e:
         logging.error(f"Failed to scale up: {str(e)}")
+        sys.exit(1)
 
 def scale_down(compute_management_client, instance_pool_id, compartment_id, min_limit):
     try:
@@ -60,3 +62,4 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
 
     except Exception as e:
         logging.error(f"Failed to scale down: {str(e)}")
+        sys.exit(1)
