@@ -593,97 +593,39 @@ class AnalyticsService:
     
     @staticmethod
     def get_system_analytics(db: Session) -> SystemAnalyticsResponse:
-        """Get real-time system analytics based on current node status"""
+        """
+        Get real-time system analytics based on current node status.
+        Now uses DashboardAnalyticsCalculator for accurate calculations.
+        """
         try:
-            now = datetime.utcnow()
-            twenty_four_hours_ago = now - timedelta(hours=24)
+            from analytics_calculator import DashboardAnalyticsCalculator
             
-            # Get all active nodes (heartbeat within last 5 minutes)
-            five_minutes_ago = now - timedelta(minutes=5)
-            active_nodes = db.query(Node).filter(
-                Node.last_heartbeat >= five_minutes_ago,
-                Node.status == NodeStatus.ONLINE
-            ).all()
-            
-            active_node_count = len(active_nodes)
-            
-            # Total current instances across all active nodes
-            total_current_instances = 0
-            for node in active_nodes:
-                latest_analytics = db.query(NodeAnalytics).filter(
-                    NodeAnalytics.node_id == node.id
-                ).order_by(NodeAnalytics.timestamp.desc()).first()
-                
-                if latest_analytics:
-                    total_current_instances += latest_analytics.current_instances or 0
-            
-            # Peak instances in last 24h - find the highest total at any point in time
-            peak_instances_24h = total_current_instances  # Start with current
-            
-            # Check hourly snapshots for peak
-            for i in range(24):
-                hour_start = twenty_four_hours_ago + timedelta(hours=i)
-                hour_end = hour_start + timedelta(hours=1)
-                
-                hour_total = 0
-                for node in db.query(Node).all():  # Check all nodes for historical data
-                    node_analytics = db.query(NodeAnalytics).filter(
-                        NodeAnalytics.node_id == node.id,
-                        NodeAnalytics.timestamp >= hour_start,
-                        NodeAnalytics.timestamp < hour_end
-                    ).order_by(NodeAnalytics.timestamp.desc()).first()
-                    
-                    if node_analytics:
-                        hour_total += node_analytics.current_instances or 0
-                
-                peak_instances_24h = max(peak_instances_24h, hour_total)
-            
-            # Active pools count (same as active nodes since pools = nodes)
-            total_active_pools = active_node_count
-            
-            # Max active pools in 24h
-            max_active_pools_24h = total_active_pools
-            
-            # Calculate average CPU and memory from active nodes
-            total_cpu = 0
-            total_memory = 0
-            nodes_with_data = 0
-            
-            for node in active_nodes:
-                latest_analytics = db.query(NodeAnalytics).filter(
-                    NodeAnalytics.node_id == node.id
-                ).order_by(NodeAnalytics.timestamp.desc()).first()
-                
-                if latest_analytics:
-                    if latest_analytics.avg_cpu_utilization is not None:
-                        total_cpu += latest_analytics.avg_cpu_utilization
-                        nodes_with_data += 1
-                    if latest_analytics.avg_memory_utilization is not None:
-                        total_memory += latest_analytics.avg_memory_utilization
-            
-            avg_system_cpu = total_cpu / nodes_with_data if nodes_with_data > 0 else 0
-            avg_system_memory = total_memory / nodes_with_data if nodes_with_data > 0 else 0
+            analytics_data = DashboardAnalyticsCalculator.get_complete_dashboard_analytics(db)
             
             return SystemAnalyticsResponse(
-                total_active_pools=total_active_pools,
-                total_current_instances=total_current_instances,
-                peak_instances_24h=peak_instances_24h,
-                max_active_pools_24h=max_active_pools_24h,
-                avg_system_cpu=avg_system_cpu,
-                avg_system_memory=avg_system_memory,
-                active_nodes=active_node_count,
-                last_updated=now.isoformat()
+                total_active_pools=analytics_data["total_active_pools"],
+                total_current_instances=analytics_data["total_current_instances"],
+                peak_instances_24h=analytics_data["peak_instances_24h"],
+                max_active_pools_24h=analytics_data["max_active_pools_24h"],
+                avg_system_cpu=analytics_data["avg_system_cpu"],
+                avg_system_memory=analytics_data["avg_system_memory"],
+                active_nodes=analytics_data["active_nodes"],
+                last_updated=analytics_data["last_updated"].isoformat()
             )
-            
         except Exception as e:
-            print(f"Error in get_system_analytics: {str(e)}")
+            logger.error(f"Error in get_system_analytics: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            # Return zeros on error
+            now = datetime.utcnow()
             return SystemAnalyticsResponse(
                 total_active_pools=0,
                 total_current_instances=0,
                 peak_instances_24h=0,
                 max_active_pools_24h=0,
-                avg_system_cpu=0,
-                avg_system_memory=0,
+                avg_system_cpu=0.0,
+                avg_system_memory=0.0,
                 active_nodes=0,
                 last_updated=now.isoformat()
             )

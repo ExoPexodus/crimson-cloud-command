@@ -228,14 +228,14 @@ class HeartbeatResponse(BaseModel):
 
 # Analytics schemas
 class SystemAnalyticsResponse(BaseModel):
-    total_active_pools: int
-    total_current_instances: int
-    peak_instances_24h: int
-    max_active_pools_24h: int
-    avg_system_cpu: float
-    avg_system_memory: float
-    active_nodes: int
-    last_updated: datetime
+    total_active_pools: int  # Active pools in last 24h
+    total_current_instances: int  # Currently running instances
+    peak_instances_24h: int  # Peak instances in last 24h
+    max_active_pools_24h: int  # Max pools at any point today
+    avg_system_cpu: float  # Average CPU across all active pools
+    avg_system_memory: float  # Average memory across all active pools
+    active_nodes: int  # Nodes with recent heartbeats
+    last_updated: datetime  # Timestamp of this analytics snapshot
 
 class PoolAnalyticsResponse(BaseModel):
     id: int
