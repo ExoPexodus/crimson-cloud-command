@@ -80,6 +80,7 @@ class OCIMetricsCollector(MetricsCollector):
             return cpu_utilization, memory_utilization
         except Exception as e:
             logging.error(f"Failed to fetch metrics for instance {instance_id}: {e}")
+            sys.exit(1)
             return 0, 0
 
     def get_metrics(self):
