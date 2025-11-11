@@ -2,9 +2,11 @@ import oci
 import logging
 import time
 import sys
+import os
 from oci.core import ComputeManagementClient
-from instance_manager.instance_pool import get_instance_pool_details
+from instance_manager.instance_pool import get_instance_pool_details, get_instances_from_instance_pool
 from user_config.config_manager import build_oci_config  # Ensure to use this
+from alerts.webhook import send_terminating_instances_webhook
 
 def initialize_oci_client(config):
     return ComputeManagementClient(config)
@@ -36,7 +38,7 @@ def scale_up(compute_management_client, instance_pool_id, compartment_id, max_li
         logging.error(f"Failed to scale up: {str(e)}")
         sys.exit(1)
 
-def scale_down(compute_management_client, instance_pool_id, compartment_id, min_limit):
+def scale_down(compute_management_client, instance_pool_id, compartment_id, min_limit, reason="scaling down"):
     try:
         # Fetch current instance pool details
         pool_details = get_instance_pool_details(compute_management_client, instance_pool_id=instance_pool_id)
@@ -57,8 +59,14 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
         )
 
         logging.info(f"Scaled down: Target instance count updated to {new_size}")
+        logging.info("Waiting for 15 seconds before triggering the alert webhook...")
+        time.sleep(15)
+        
+        instances = get_instances_from_instance_pool(compute_management_client, instance_pool_id, compartment_id)
+        send_terminating_instances_webhook(instances, os.getenv("WEBHOOK_URL"), reason, os.getenv("PROJECT_NAME") )
+
         logging.info("Waiting for 15 minutes after scaling down...")
-        time.sleep(900)
+        time.sleep(880)
 
     except Exception as e:
         logging.error(f"Failed to scale down: {str(e)}")

@@ -61,11 +61,13 @@ def evaluate_metrics(collector, thresholds, scaling_limits, scheduler_active_cal
                 f"Current size ({current_size}) exceeds the maximum limit ({scaling_limits['max']}). "
                 "Prioritizing scaling down."
             )
+            reason = f"Current pool size ({current_size}) exceeds the maximum limit ({scaling_limits['max']})."
             scale_down(
                 collector.compute_management_client,
                 collector.instance_pool_id,
                 collector.compartment_id,
                 scaling_limits["min"],
+                reason
             )
             return
 
@@ -84,11 +86,18 @@ def evaluate_metrics(collector, thresholds, scaling_limits, scheduler_active_cal
             if scheduler_active_callback():
                 logging.info("Scheduler is active. Temporarily preventing scaling down.")
                 return
+            reason = (
+                    "CPU or RAM are below thresholds."
+                    f"CPU {avg_cpu}% (min {thresholds['cpu']['min']}%), "
+                    f"RAM {avg_ram}% (min {thresholds['ram']['min']}%)"
+                        )
+
             scale_down(
                 collector.compute_management_client,
                 collector.instance_pool_id,
                 collector.compartment_id,
                 scaling_limits["min"],
+                reason
             )
         else:
             logging.info("No scaling required: Metrics are within thresholds.")
