@@ -59,14 +59,40 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
         )
 
         logging.info(f"Scaled down: Target instance count updated to {new_size}")
-        logging.info("Waiting for 15 seconds before triggering the alert webhook...")
-        time.sleep(15)
         
-        instances = get_instances_from_instance_pool(compute_management_client, instance_pool_id, compartment_id)
-        send_terminating_instances_webhook(instances, os.getenv("WEBHOOK_URL"), reason, os.getenv("PROJECT_NAME") )
+        # Retry mechanism to check for terminating instances (3 attempts, 10 seconds apart)
+        webhook_url = os.getenv("WEBHOOK_URL")
+        project_name = os.getenv("PROJECT_NAME")
+        
+        if webhook_url:
+            max_retries = 3
+            retry_interval = 10
+            terminating_found = False
+            
+            for attempt in range(1, max_retries + 1):
+                logging.info(f"Checking for terminating instances (attempt {attempt}/{max_retries})...")
+                instances = get_instances_from_instance_pool(compute_management_client, instance_pool_id, compartment_id)
+                
+                # Check if any instances are terminating
+                terminating_instances = [i for i in instances if i.state in ["Terminating", "Terminated"]]
+                
+                if terminating_instances:
+                    logging.info(f"Found {len(terminating_instances)} terminating instance(s), sending webhook...")
+                    send_terminating_instances_webhook(instances, webhook_url, reason, project_name)
+                    terminating_found = True
+                    break
+                else:
+                    if attempt < max_retries:
+                        logging.info(f"No terminating instances found yet, waiting {retry_interval} seconds before retry...")
+                        time.sleep(retry_interval)
+            
+            if not terminating_found:
+                logging.warning(f"No terminating instances detected after {max_retries} attempts")
+        else:
+            logging.warning("WEBHOOK_URL not configured, skipping termination alert")
 
         logging.info("Waiting for 15 minutes after scaling down...")
-        time.sleep(880)
+        time.sleep(900)
 
     except Exception as e:
         logging.error(f"Failed to scale down: {str(e)}")

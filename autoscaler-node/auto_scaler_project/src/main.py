@@ -411,6 +411,20 @@ def process_pool(pool, autoscaler_node):
 def main():
     logging.info("Starting autoscaling process...")
     
+    # Validate critical environment variables at startup
+    webhook_url = os.getenv("WEBHOOK_URL")
+    project_name = os.getenv("PROJECT_NAME")
+    
+    if not webhook_url:
+        logging.warning("⚠️  WEBHOOK_URL not set - termination alerts will be disabled")
+    else:
+        logging.info(f"✓ WEBHOOK_URL configured: {webhook_url[:30]}...")
+    
+    if not project_name:
+        logging.warning("⚠️  PROJECT_NAME not set - webhook alerts will use 'unknown' as project name")
+    else:
+        logging.info(f"✓ PROJECT_NAME configured: {project_name}")
+    
     # Load configuration first to get backend settings
     config_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), "config.yaml"
