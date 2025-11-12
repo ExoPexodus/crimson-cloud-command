@@ -66,7 +66,7 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
         
         if webhook_url:
             max_retries = 3
-            retry_interval = 10
+            retry_interval = 30
             terminating_found = False
             
             for attempt in range(1, max_retries + 1):
