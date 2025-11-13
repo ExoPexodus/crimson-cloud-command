@@ -18,14 +18,26 @@ from services.heartbeat_service import HeartbeatService
 import hashlib
 import socket
 
+# Configure logging level from environment variable
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level_mapping = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL
+}
+
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
+    level=log_level_mapping.get(LOG_LEVEL, logging.INFO),
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("autoscaling.log"),
         logging.StreamHandler()  # Output logs to the console
     ],
 )
+
+logging.info(f"Logging level set to: {LOG_LEVEL}")
 
 class AutoscalerNode:
     def __init__(self, backend_config):
