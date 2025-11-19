@@ -133,9 +133,18 @@ async def public_config():
 
 # Authentication endpoints
 @app.post("/auth/register", response_model=UserResponse)
-async def register(user: UserCreate, db: Session = Depends(get_db)):
+async def register(user: UserCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Register new user (admin only)"""
     try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        logger.info(f"Admin {current_user.email} creating new user: {user.email}")
         return UserService.create_user(db, user)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
@@ -715,14 +724,20 @@ async def update_user_role(user_id: int, role_update: UserUpdateRole, db: Sessio
                 detail="Access denied. Admin role required."
             )
         
+        logger.info(f"Admin {current_user.email} updating user {user_id} role to {role_update.role}")
+        
         try:
             updated_user = UserService.update_user_role(db, user_id, role_update.role)
             if not updated_user:
                 raise HTTPException(status_code=404, detail="User not found")
+            logger.info(f"Successfully updated user {user_id} role to {role_update.role}")
             return updated_user
         except ValueError as e:
+            logger.warning(f"Role update validation error for user {user_id}: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Update user role error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update user role: {str(e)}")

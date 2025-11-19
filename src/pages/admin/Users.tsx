@@ -64,15 +64,25 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
+      console.log('[Users] Fetching all users...');
       const result = await apiClient.getAllUsers();
+      console.log('[Users] Fetch result:', result);
+      
       if (result.data) {
+        console.log('[Users] Users loaded:', result.data.length);
         setUsers(result.data);
       }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
+    } catch (error: any) {
+      console.error('[Users] Failed to fetch users:', error);
+      console.error('[Users] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       toast({
         title: "Error",
-        description: "Failed to fetch users",
+        description: error.response?.data?.detail || "Failed to fetch users",
         variant: "destructive",
       });
     } finally {
@@ -83,7 +93,10 @@ export default function UsersPage() {
   const updateUserRole = async (userId: number, newRole: string) => {
     setUpdatingUser(userId);
     try {
+      console.log(`[Users] Updating user ${userId} role to ${newRole}`);
       const result = await apiClient.updateUserRole(userId, newRole);
+      console.log('[Users] Role update result:', result);
+      
       if (result.data) {
         setUsers(users.map(user => 
           user.id === userId ? { ...user, role: newRole as any } : user
@@ -93,11 +106,17 @@ export default function UsersPage() {
           description: "User role updated successfully",
         });
       }
-    } catch (error) {
-      console.error('Failed to update user role:', error);
+    } catch (error: any) {
+      console.error('[Users] Failed to update user role:', error);
+      console.error('[Users] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       toast({
         title: "Error",
-        description: "Failed to update user role",
+        description: error.response?.data?.detail || "Failed to update user role",
         variant: "destructive",
       });
     } finally {
@@ -108,11 +127,17 @@ export default function UsersPage() {
   const createUser = async (data: CreateUserFormData) => {
     setCreatingUser(true);
     try {
+      console.log('[Users] Creating new user:', { email: data.email, role: data.role });
       const result = await apiClient.register(data.email, data.password, data.full_name);
+      
+      console.log('[Users] User creation result:', result);
+      
       if (result.data) {
         // Update the user's role if not 'user'
         if (data.role !== 'user' && result.data.id) {
+          console.log(`[Users] Updating user ${result.data.id} role to ${data.role}`);
           await apiClient.updateUserRole(result.data.id, data.role);
+          console.log('[Users] Role update successful');
         }
         
         toast({
@@ -125,10 +150,18 @@ export default function UsersPage() {
         fetchUsers();
       }
     } catch (error: any) {
-      console.error('Failed to create user:', error);
+      console.error('[Users] Failed to create user:', error);
+      console.error('[Users] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to create user";
+      
       toast({
         title: "Error",
-        description: error.response?.data?.detail || "Failed to create user",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
