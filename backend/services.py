@@ -276,6 +276,59 @@ class UserService:
         db.commit()
         db.refresh(user)
         return user
+    
+    @staticmethod
+    def update_profile(db: Session, user_id: int, full_name: Optional[str] = None, 
+                      email: Optional[str] = None, current_password: Optional[str] = None, 
+                      new_password: Optional[str] = None) -> Optional[User]:
+        """Update user profile (self-service for local users)"""
+        logger = logging.getLogger(__name__)
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.warning(f"User not found: {user_id}")
+            return None
+        
+        # Only allow profile updates for local users
+        if user.auth_provider != AuthProvider.LOCAL:
+            logger.warning(f"Profile update blocked for non-local user: {user.email}")
+            raise ValueError("Cannot modify profile for non-local users")
+        
+        # Update full name if provided
+        if full_name is not None:
+            user.full_name = full_name
+            logger.info(f"Updated full_name for user {user.email}")
+        
+        # Update email if provided and not already taken
+        if email is not None and email != user.email:
+            existing_user = db.query(User).filter(User.email == email).first()
+            if existing_user:
+                logger.warning(f"Email {email} already taken")
+                raise ValueError("Email already exists")
+            user.email = email
+            logger.info(f"Updated email for user {user.id} to {email}")
+        
+        # Update password if provided
+        if new_password is not None:
+            # Verify current password
+            if not current_password:
+                logger.warning("Current password not provided for password change")
+                raise ValueError("Current password is required to change password")
+            
+            if not user.hashed_password:
+                logger.warning("User has no password set")
+                raise ValueError("User has no password set")
+            
+            if not AuthService.verify_password(current_password, user.hashed_password):
+                logger.warning("Current password incorrect")
+                raise ValueError("Current password is incorrect")
+            
+            user.hashed_password = AuthService.get_password_hash(new_password)
+            logger.info(f"Updated password for user {user.email}")
+        
+        db.commit()
+        db.refresh(user)
+        logger.info(f"Profile updated successfully for user {user.email}")
+        return user
 
 class NodeService:
     @staticmethod

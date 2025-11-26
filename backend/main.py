@@ -16,7 +16,7 @@ from schemas import (
     PoolCreate, PoolResponse, PoolUpdate,
     MetricCreate, MetricResponse,
     ScheduleCreate, ScheduleResponse,
-    UserCreate, UserResponse, UserListResponse, UserUpdateRole,
+    UserCreate, UserResponse, UserListResponse, UserUpdateRole, UserProfileUpdate,
     Token, AuthResponse, KeycloakLoginRequest, NodeHeartbeatData, HeartbeatResponse,
     SystemAnalyticsResponse, PoolAnalyticsResponse,
     NodeRegister, NodeRegisterResponse, UserRole
@@ -256,6 +256,50 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
         logger.error(f"📚 Traceback:\n{traceback.format_exc()}")
         logger.error("=" * 80)
         raise HTTPException(status_code=500, detail=f"Keycloak login failed: {str(e)}")
+
+@app.put("/auth/profile", response_model=UserResponse)
+async def update_profile(
+    update_data: schemas.UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Update user profile (authenticated users only)"""
+    try:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated"
+            )
+        
+        updated_user = UserService.update_profile(
+            db=db,
+            user_id=current_user.id,
+            full_name=update_data.full_name,
+            email=update_data.email,
+            current_password=update_data.current_password,
+            new_password=update_data.new_password
+        )
+        
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        logger.info(f"Profile updated for user: {updated_user.email}")
+        return updated_user
+        
+    except ValueError as e:
+        logger.warning(f"Profile update validation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Profile update error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Profile update failed: {str(e)}")
 
 # Node registration endpoint (for autoscaling nodes)
 @app.post("/nodes/register", response_model=NodeRegisterResponse)
