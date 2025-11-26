@@ -12,6 +12,7 @@ class NodeStatus(enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
+    OFFLINE = "offline"
 
 class PoolStatus(enum.Enum):
     HEALTHY = "healthy"

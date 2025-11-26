@@ -333,7 +333,8 @@ class UserService:
 class NodeService:
     @staticmethod
     def get_nodes(db: Session) -> List[Node]:
-        nodes = db.query(Node).all()
+        # Filter out OFFLINE nodes from the list
+        nodes = db.query(Node).filter(Node.status != NodeStatus.OFFLINE).all()
         for node in nodes:
             node.has_api_key = bool(node.api_key_hash)
         return nodes
@@ -395,7 +396,12 @@ class NodeService:
     def delete_node(db: Session, node_id: int) -> bool:
         db_node = db.query(Node).filter(Node.id == node_id).first()
         if db_node:
-            db.delete(db_node)
+            # If node is inactive, permanently delete it
+            # Otherwise, soft delete by setting status to OFFLINE
+            if db_node.status == NodeStatus.INACTIVE:
+                db.delete(db_node)
+            else:
+                db_node.status = NodeStatus.OFFLINE
             db.commit()
             return True
         return False
@@ -436,6 +442,9 @@ class HeartbeatService:
             raise ValueError(f"Node {node_id} not found")
         
         node.last_heartbeat = datetime.utcnow()
+        # Reactivate OFFLINE nodes automatically on heartbeat
+        if node.status == NodeStatus.OFFLINE:
+            logger.info(f"Reactivating offline node {node_id}")
         node.status = NodeStatus.ACTIVE
         
         # Convert metrics_data dict to JSON string for database storage
