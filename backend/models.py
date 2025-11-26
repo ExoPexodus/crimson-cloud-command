@@ -9,10 +9,10 @@ import enum
 Base = declarative_base()
 
 class NodeStatus(enum.Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    ERROR = "error"
-    OFFLINE = "offline"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    ERROR = "ERROR"
+    OFFLINE = "OFFLINE"
 
 class PoolStatus(enum.Enum):
     HEALTHY = "healthy"

@@ -4,10 +4,10 @@ from datetime import datetime
 from enum import Enum
 
 class NodeStatus(str, Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    ERROR = "error"
-    OFFLINE = "offline"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    ERROR = "ERROR"
+    OFFLINE = "OFFLINE"
 
 class PoolStatus(str, Enum):
     HEALTHY = "healthy"
