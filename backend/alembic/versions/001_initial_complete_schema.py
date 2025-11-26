@@ -18,7 +18,7 @@ def upgrade() -> None:
     # Create enum types
     nodestatus_enum = sa.Enum('active', 'inactive', 'error', name='nodestatus')
     poolstatus_enum = sa.Enum('healthy', 'warning', 'error', name='poolstatus')
-    userrole_enum = sa.Enum('user', 'devops', 'admin', name='userrole')
+    userrole_enum = sa.Enum('USER', 'DEVOPS', 'ADMIN', name='userrole')
     authprovider_enum = sa.Enum('local', 'keycloak', name='authprovider')
     
     nodestatus_enum.create(op.get_bind())
@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column('email', sa.String(length=255), nullable=False),
         sa.Column('hashed_password', sa.String(length=255), nullable=True),
         sa.Column('full_name', sa.String(length=255), nullable=False),
-        sa.Column('role', userrole_enum, nullable=False, server_default='user'),
+        sa.Column('role', userrole_enum, nullable=False, server_default='USER'),
         sa.Column('auth_provider', authprovider_enum, nullable=False, server_default='local'),
         sa.Column('keycloak_user_id', sa.String(length=255), nullable=True),
         sa.Column('is_active', sa.Boolean(), nullable=True),
@@ -197,7 +197,7 @@ def downgrade() -> None:
     
     # Drop enum types
     authprovider_enum = sa.Enum('local', 'keycloak', name='authprovider')
-    userrole_enum = sa.Enum('user', 'devops', 'admin', name='userrole')
+    userrole_enum = sa.Enum('USER', 'DEVOPS', 'ADMIN', name='userrole')
     poolstatus_enum = sa.Enum('healthy', 'warning', 'error', name='poolstatus')
     nodestatus_enum = sa.Enum('active', 'inactive', 'error', name='nodestatus')
     

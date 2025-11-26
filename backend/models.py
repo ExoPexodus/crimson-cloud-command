@@ -19,9 +19,9 @@ class PoolStatus(enum.Enum):
     ERROR = "error"
 
 class UserRole(enum.Enum):
-    USER = "user"
-    DEVOPS = "devops"
-    ADMIN = "admin"
+    USER = "USER"
+    DEVOPS = "DEVOPS"
+    ADMIN = "ADMIN"
 
 class AuthProvider(enum.Enum):
     LOCAL = "local"
