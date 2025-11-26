@@ -35,10 +35,10 @@ function AuthenticatedApp() {
         <Route path="/" element={<Index />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/nodes" element={
-          hasRole('devops') ? <Nodes /> : <NotFound />
+          hasRole('DEVOPS') ? <Nodes /> : <NotFound />
         } />
         <Route path="/admin/users" element={
-          hasRole('admin') ? <UsersPage /> : <NotFound />
+          hasRole('ADMIN') ? <UsersPage /> : <NotFound />
         } />
         <Route path="*" element={<NotFound />} />
       </Routes>

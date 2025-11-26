@@ -5,7 +5,7 @@ interface User {
   id: number;
   email: string;
   full_name: string;
-  role: 'user' | 'devops' | 'admin';
+  role: 'USER' | 'DEVOPS' | 'ADMIN';
   auth_provider: 'local' | 'keycloak';
   keycloak_user_id?: string;
   is_active: boolean;
@@ -19,7 +19,7 @@ interface AuthContextType {
   loginWithKeycloak: (code: string, redirectUri: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
-  hasRole: (role: 'user' | 'devops' | 'admin') => boolean;
+  hasRole: (role: 'USER' | 'DEVOPS' | 'ADMIN') => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,10 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user_data');
   };
 
-  const hasRole = (role: 'user' | 'devops' | 'admin'): boolean => {
+  const hasRole = (role: 'USER' | 'DEVOPS' | 'ADMIN'): boolean => {
     if (!user) return false;
     
-    const roleHierarchy = { user: 1, devops: 2, admin: 3 } as const;
+    const roleHierarchy = { USER: 1, DEVOPS: 2, ADMIN: 3 } as const;
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[role] || 0;
     
