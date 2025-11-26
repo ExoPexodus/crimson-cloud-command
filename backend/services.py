@@ -436,6 +436,8 @@ class NodeConfigurationService:
 class HeartbeatService:
     @staticmethod
     def process_heartbeat(db: Session, node_id: int, heartbeat_data: NodeHeartbeatData) -> Dict[str, Any]:
+        logger = logging.getLogger(__name__)
+        
         # Update node status and last heartbeat
         node = db.query(Node).filter(Node.id == node_id).first()
         if not node:
