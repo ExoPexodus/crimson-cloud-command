@@ -26,7 +26,7 @@ const allNavItems = [
     title: "Nodes",
     url: "/nodes",
     icon: Activity,
-    requiredRole: 'devops' as const,
+    requiredRole: 'DEVOPS' as const,
   },
 ];
 
@@ -41,7 +41,7 @@ const allManagementItems = [
     title: "Users",
     icon: Users,
     url: "/admin/users",
-    requiredRole: 'admin' as const,
+    requiredRole: 'ADMIN' as const,
   },
 ];
 

@@ -20,7 +20,7 @@ interface User {
   id: number;
   email: string;
   full_name: string;
-  role: 'user' | 'devops' | 'admin';
+  role: 'USER' | 'DEVOPS' | 'ADMIN';
   auth_provider: 'local' | 'keycloak';
   is_active: boolean;
   created_at: string;
@@ -30,7 +30,7 @@ const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   full_name: z.string().min(1, 'Full name is required'),
-  role: z.enum(['user', 'devops', 'admin']),
+  role: z.enum(['USER', 'DEVOPS', 'ADMIN']),
 });
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
@@ -51,12 +51,12 @@ export default function UsersPage() {
       email: '',
       password: '',
       full_name: '',
-      role: 'user',
+      role: 'USER',
     },
   });
 
   useEffect(() => {
-    if (!hasRole('admin')) {
+    if (!hasRole('ADMIN')) {
       return;
     }
     fetchUsers();
@@ -133,8 +133,8 @@ export default function UsersPage() {
       console.log('[Users] User creation result:', result);
       
       if (result.data) {
-        // Update the user's role if not 'user'
-        if (data.role !== 'user' && result.data.id) {
+        // Update the user's role if not 'USER'
+        if (data.role !== 'USER' && result.data.id) {
           console.log(`[Users] Updating user ${result.data.id} role to ${data.role}`);
           await apiClient.updateUserRole(result.data.id, data.role);
           console.log('[Users] Role update successful');
@@ -171,21 +171,21 @@ export default function UsersPage() {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin': return <Shield className="h-4 w-4" />;
-      case 'devops': return <Users className="h-4 w-4" />;
+      case 'ADMIN': return <Shield className="h-4 w-4" />;
+      case 'DEVOPS': return <Users className="h-4 w-4" />;
       default: return <User className="h-4 w-4" />;
     }
   };
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'admin': return 'destructive';
-      case 'devops': return 'default';
+      case 'ADMIN': return 'destructive';
+      case 'DEVOPS': return 'default';
       default: return 'secondary';
     }
   };
 
-  if (!hasRole('admin')) {
+  if (!hasRole('ADMIN')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-bg">
         <Card className="w-96">
@@ -285,9 +285,9 @@ export default function UsersPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="user">User</SelectItem>
-                              <SelectItem value="devops">DevOps</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="USER">User</SelectItem>
+                              <SelectItem value="DEVOPS">DevOps</SelectItem>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -355,9 +355,9 @@ export default function UsersPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="devops">DevOps</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="USER">User</SelectItem>
+                          <SelectItem value="DEVOPS">DevOps</SelectItem>
+                          <SelectItem value="ADMIN">Admin</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
