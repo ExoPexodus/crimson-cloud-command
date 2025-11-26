@@ -259,7 +259,7 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
 
 @app.put("/auth/profile", response_model=UserResponse)
 async def update_profile(
-    update_data: schemas.UserProfileUpdate,
+    update_data: UserProfileUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
