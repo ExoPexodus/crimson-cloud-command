@@ -126,7 +126,7 @@ export function KeycloakLoginButton() {
       className="w-full"
       title={title}
     >
-      {isLoading ? 'Redirecting...' : 'Login with Keycloak'}
+      {isLoading ? 'Redirecting...' : 'Login with Kocharsoft SSO'}
     </Button>
   );
 }
