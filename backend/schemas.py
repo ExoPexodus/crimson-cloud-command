@@ -14,9 +14,9 @@ class PoolStatus(str, Enum):
     ERROR = "error"
 
 class UserRole(str, Enum):
-    USER = "user"
-    DEVOPS = "devops"
-    ADMIN = "admin"
+    USER = "USER"
+    DEVOPS = "DEVOPS"
+    ADMIN = "ADMIN"
 
 class AuthProvider(str, Enum):
     LOCAL = "local"
