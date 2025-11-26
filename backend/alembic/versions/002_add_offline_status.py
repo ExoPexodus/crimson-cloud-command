@@ -15,8 +15,8 @@ branch_labels = None
 depends_on = None
 
 def upgrade() -> None:
-    # Add 'offline' to the nodestatus enum
-    op.execute("ALTER TYPE nodestatus ADD VALUE IF NOT EXISTS 'offline'")
+    # Add 'OFFLINE' to the nodestatus enum
+    op.execute("ALTER TYPE nodestatus ADD VALUE IF NOT EXISTS 'OFFLINE'")
 
 def downgrade() -> None:
     # Note: PostgreSQL doesn't support removing enum values directly

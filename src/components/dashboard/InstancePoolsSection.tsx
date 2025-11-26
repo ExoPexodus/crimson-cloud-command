@@ -8,7 +8,7 @@ interface Node {
   id: number;
   name: string;
   region: string;
-  status: "active" | "inactive" | "error" | "offline";
+  status: "ACTIVE" | "INACTIVE" | "ERROR" | "OFFLINE";
   last_heartbeat?: string;
 }
 
@@ -33,7 +33,7 @@ export function InstancePoolsSection() {
         if (nodesResponse.data) {
           // Filter out offline nodes (backend already filters them, but adding defensive check)
           const activeNodes = nodesResponse.data.filter((node: Node) => 
-            node.status !== 'offline' && (node.status === 'active' || node.last_heartbeat)
+            node.status !== 'OFFLINE' && (node.status === 'ACTIVE' || node.last_heartbeat)
           );
           setNodes(activeNodes);
           

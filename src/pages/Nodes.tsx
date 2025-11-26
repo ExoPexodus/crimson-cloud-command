@@ -20,7 +20,7 @@ interface Node {
   id: number;
   name: string;
   region: string;
-  status: "active" | "inactive" | "error" | "offline";
+  status: "ACTIVE" | "INACTIVE" | "ERROR" | "OFFLINE";
   last_heartbeat?: string;
   created_at: string;
   api_key_hash?: string;
