@@ -81,9 +81,9 @@ const Settings = () => {
   };
 
   const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'devops': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    switch (role?.toUpperCase()) {
+      case 'ADMIN': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'DEVOPS': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };

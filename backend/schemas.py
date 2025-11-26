@@ -172,6 +172,12 @@ class UserResponse(BaseModel):
 class UserUpdateRole(BaseModel):
     role: UserRole
 
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
 class UserListResponse(BaseModel):
     id: int
     email: str
