@@ -7,6 +7,7 @@ class NodeStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
+    OFFLINE = "offline"
 
 class PoolStatus(str, Enum):
     HEALTHY = "healthy"
