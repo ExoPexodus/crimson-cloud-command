@@ -1,17 +1,20 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Plus, RefreshCw, Settings, Activity, Server, Cpu, HardDrive } from "lucide-react";
+import { Plus, RefreshCw, Settings, Activity, Server, Cpu, HardDrive, Filter, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
 import { NodeConfigDialog } from "@/components/dashboard/NodeConfigDialog";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 
 interface Node {
   id: number;
@@ -39,6 +42,26 @@ const Nodes = () => {
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+
+  // Extract unique regions and set default selection
+  const availableRegions = useMemo(() => {
+    const regions = Array.from(new Set(nodes.map(node => node.region)));
+    return regions.sort();
+  }, [nodes]);
+
+  // Set all regions as selected by default when nodes are first loaded
+  useEffect(() => {
+    if (availableRegions.length > 0 && selectedRegions.length === 0) {
+      setSelectedRegions(availableRegions);
+    }
+  }, [availableRegions]);
+
+  // Filter nodes based on selected regions
+  const filteredNodes = useMemo(() => {
+    if (selectedRegions.length === 0) return nodes;
+    return nodes.filter(node => selectedRegions.includes(node.region));
+  }, [nodes, selectedRegions]);
 
   useEffect(() => {
     fetchNodes();
@@ -106,6 +129,26 @@ const Nodes = () => {
 
   const handleNodeDeleted = () => {
     fetchNodes(); // Refresh the list
+  };
+
+  const toggleRegion = (region: string) => {
+    setSelectedRegions(prev => 
+      prev.includes(region) 
+        ? prev.filter(r => r !== region)
+        : [...prev, region]
+    );
+  };
+
+  const toggleAllRegions = () => {
+    if (selectedRegions.length === availableRegions.length) {
+      setSelectedRegions([]);
+    } else {
+      setSelectedRegions(availableRegions);
+    }
+  };
+
+  const clearRegionFilters = () => {
+    setSelectedRegions(availableRegions);
   };
 
   const getNodeStatus = (node: Node): "healthy" | "warning" | "error" | "inactive" => {
@@ -183,6 +226,104 @@ const Nodes = () => {
                   </Button>
                 </div>
               </div>
+
+              {/* Region Filter */}
+              {!loading && nodes.length > 0 && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-dark-bg-light hover:bg-dark-bg-light"
+                      >
+                        <Filter size={14} className="mr-2" />
+                        Regions
+                        {selectedRegions.length > 0 && selectedRegions.length < availableRegions.length && (
+                          <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                            {selectedRegions.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3 bg-background border-dark-bg-light" align="start">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-sm">Filter by Region</h4>
+                          {selectedRegions.length < availableRegions.length && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-1 text-xs hover:bg-dark-bg-light"
+                              onClick={clearRegionFilters}
+                            >
+                              Reset
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2 p-2 rounded hover:bg-dark-bg-light/50">
+                            <Checkbox
+                              id="all-regions"
+                              checked={selectedRegions.length === availableRegions.length}
+                              onCheckedChange={toggleAllRegions}
+                            />
+                            <label
+                              htmlFor="all-regions"
+                              className="text-sm font-medium leading-none cursor-pointer flex-1"
+                            >
+                              All Regions
+                            </label>
+                          </div>
+                          
+                          <div className="border-t border-dark-bg-light/30 pt-2 space-y-1">
+                            {availableRegions.map((region) => (
+                              <div key={region} className="flex items-center space-x-2 p-2 rounded hover:bg-dark-bg-light/50">
+                                <Checkbox
+                                  id={`region-${region}`}
+                                  checked={selectedRegions.includes(region)}
+                                  onCheckedChange={() => toggleRegion(region)}
+                                />
+                                <label
+                                  htmlFor={`region-${region}`}
+                                  className="text-sm leading-none cursor-pointer flex-1"
+                                >
+                                  {region}
+                                </label>
+                                <span className="text-xs text-muted-foreground">
+                                  {nodes.filter(n => n.region === region).length}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Active filter badges */}
+                  {selectedRegions.length > 0 && selectedRegions.length < availableRegions.length && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedRegions.map(region => (
+                        <Badge 
+                          key={region} 
+                          variant="secondary" 
+                          className="gap-1 pr-1"
+                        >
+                          {region}
+                          <button
+                            onClick={() => toggleRegion(region)}
+                            className="ml-1 hover:bg-dark-bg-light rounded-full p-0.5"
+                          >
+                            <X size={12} />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Loading State */}
               {loading && (
@@ -194,7 +335,7 @@ const Nodes = () => {
               )}
 
               {/* Empty State */}
-              {!loading && nodes.length === 0 && (
+              {!loading && filteredNodes.length === 0 && nodes.length === 0 && (
                 <div className="text-center py-12">
                   <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">No Nodes Connected</h3>
@@ -211,10 +352,27 @@ const Nodes = () => {
                 </div>
               )}
               
+              {/* No results state */}
+              {!loading && filteredNodes.length === 0 && nodes.length > 0 && (
+                <div className="text-center py-12">
+                  <Filter className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Nodes Match Filter</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Try adjusting your region filter to see more results.
+                  </p>
+                  <Button 
+                    variant="outline"
+                    onClick={clearRegionFilters}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+
               {/* Nodes Grid */}
-              {!loading && nodes.length > 0 && (
+              {!loading && filteredNodes.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nodes.map((node) => {
+                  {filteredNodes.map((node) => {
                     const status = getNodeStatus(node);
                     const analytics = nodeAnalytics[node.id];
                     
