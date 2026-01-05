@@ -263,3 +263,20 @@ class PoolAnalyticsResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Node Lifecycle Log schemas
+class NodeLifecycleLogResponse(BaseModel):
+    id: int
+    node_id: int
+    node_name: Optional[str] = None
+    event_type: str
+    previous_status: Optional[str]
+    new_status: str
+    reason: Optional[str]
+    triggered_by: Optional[str]
+    metadata: Optional[str]
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True

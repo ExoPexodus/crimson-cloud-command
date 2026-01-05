@@ -15,7 +15,7 @@ import logging
 from models import (
     Node, Pool, Metric, Schedule, User, AuditLog, NodeConfiguration, 
     NodeHeartbeat, PoolAnalytics, SystemAnalytics, NodeStatus, PoolStatus,
-    UserRole, AuthProvider
+    UserRole, AuthProvider, NodeLifecycleLog
 )
 from schemas import (
     NodeCreate, NodeUpdate, PoolCreate, PoolUpdate, 
@@ -401,7 +401,19 @@ class NodeService:
             if db_node.status == NodeStatus.INACTIVE:
                 db.delete(db_node)
             else:
+                previous_status = db_node.status.value if db_node.status else None
                 db_node.status = NodeStatus.OFFLINE
+                
+                # Log lifecycle event
+                NodeLifecycleService.log_event(
+                    db=db,
+                    node_id=node_id,
+                    event_type="WENT_OFFLINE",
+                    previous_status=previous_status,
+                    new_status="OFFLINE",
+                    reason="Node deleted by user",
+                    triggered_by="manual"
+                )
             db.commit()
             return True
         return False
@@ -433,6 +445,71 @@ class NodeConfigurationService:
         db.refresh(db_config)
         return db_config
 
+class NodeLifecycleService:
+    """Service for tracking node lifecycle events (online/offline transitions)"""
+    
+    @staticmethod
+    def log_event(
+        db: Session,
+        node_id: int,
+        event_type: str,
+        previous_status: Optional[str],
+        new_status: str,
+        reason: Optional[str] = None,
+        triggered_by: Optional[str] = None,
+        metadata_dict: Optional[Dict[str, Any]] = None
+    ) -> NodeLifecycleLog:
+        """Log a node lifecycle event"""
+        metadata_json = json.dumps(metadata_dict) if metadata_dict else None
+        
+        log_entry = NodeLifecycleLog(
+            node_id=node_id,
+            event_type=event_type,
+            previous_status=previous_status,
+            new_status=new_status,
+            reason=reason,
+            triggered_by=triggered_by,
+            metadata=metadata_json
+        )
+        db.add(log_entry)
+        return log_entry
+    
+    @staticmethod
+    def get_logs(
+        db: Session,
+        node_id: Optional[int] = None,
+        event_type: Optional[str] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Get lifecycle logs with optional filtering"""
+        query = db.query(NodeLifecycleLog, Node.name.label('node_name')).join(
+            Node, NodeLifecycleLog.node_id == Node.id
+        )
+        
+        if node_id:
+            query = query.filter(NodeLifecycleLog.node_id == node_id)
+        if event_type:
+            query = query.filter(NodeLifecycleLog.event_type == event_type)
+        
+        results = query.order_by(desc(NodeLifecycleLog.timestamp)).limit(limit).all()
+        
+        return [
+            {
+                "id": log.id,
+                "node_id": log.node_id,
+                "node_name": node_name,
+                "event_type": log.event_type,
+                "previous_status": log.previous_status,
+                "new_status": log.new_status,
+                "reason": log.reason,
+                "triggered_by": log.triggered_by,
+                "metadata": log.metadata,
+                "timestamp": log.timestamp
+            }
+            for log, node_name in results
+        ]
+
+
 class HeartbeatService:
     @staticmethod
     def process_heartbeat(db: Session, node_id: int, heartbeat_data: NodeHeartbeatData) -> Dict[str, Any]:
@@ -443,11 +520,26 @@ class HeartbeatService:
         if not node:
             raise ValueError(f"Node {node_id} not found")
         
+        previous_status = node.status.value if node.status else None
         node.last_heartbeat = datetime.utcnow()
+        
         # Reactivate OFFLINE nodes automatically on heartbeat
         if node.status == NodeStatus.OFFLINE:
             logger.info(f"Reactivating offline node {node_id}")
-        node.status = NodeStatus.ACTIVE
+            node.status = NodeStatus.ACTIVE
+            
+            # Log lifecycle event for coming back online
+            NodeLifecycleService.log_event(
+                db=db,
+                node_id=node_id,
+                event_type="CAME_ONLINE",
+                previous_status=previous_status,
+                new_status="ACTIVE",
+                reason="Node sent heartbeat after being offline",
+                triggered_by="heartbeat"
+            )
+        else:
+            node.status = NodeStatus.ACTIVE
         
         # Convert metrics_data dict to JSON string for database storage
         metrics_data_json = json.dumps(heartbeat_data.metrics_data) if heartbeat_data.metrics_data else None
