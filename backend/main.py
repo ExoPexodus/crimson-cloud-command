@@ -144,7 +144,17 @@ async def register(user: UserCreate, db: Session = Depends(get_db), current_user
                 detail="Access denied. Admin role required."
             )
         logger.info(f"Admin {current_user.email} creating new user: {user.email}")
-        return UserService.create_user(db, user)
+        new_user = UserService.create_user(db, user)
+        
+        # Log user creation
+        AuditService.log_user_action(
+            db, AuditAction.USER_CREATED,
+            new_user.id, new_user.email,
+            acting_user=current_user,
+            description=f"Admin {current_user.email} created user {new_user.email}"
+        )
+        
+        return new_user
     except HTTPException:
         raise
     except Exception as e:
@@ -156,11 +166,17 @@ async def login(email: str = Form(...), password: str = Form(...), db: Session =
     try:
         user = AuthService.authenticate_user(db, email, password)
         if not user:
+            # Log failed authentication
+            AuditService.log_auth_failure(db, email, "Incorrect email or password")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password"
             )
         access_token = AuthService.create_access_token(data={"sub": user.email})
+        
+        # Log successful authentication
+        AuditService.log_auth_success(db, user, AuditAction.LOGIN_SUCCESS)
+        
         return {
             "access_token": access_token, 
             "token_type": "bearer",
@@ -239,6 +255,13 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
         
         logger.info("✅ Keycloak login complete")
         logger.info("=" * 80)
+        
+        # Log successful Keycloak authentication
+        AuditService.log_auth_success(
+            db, user, 
+            AuditAction.KEYCLOAK_LOGIN,
+            details={"provider": "keycloak", "roles": user_roles}
+        )
         
         return {
             "access_token": local_token,
