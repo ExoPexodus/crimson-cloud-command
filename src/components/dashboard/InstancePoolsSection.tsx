@@ -1,5 +1,5 @@
-
 import { InstancePoolCard } from "@/components/dashboard/InstancePoolCard";
+import { NodeConfigDialog } from "@/components/dashboard/NodeConfigDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
@@ -10,6 +10,8 @@ interface Node {
   region: string;
   status: "ACTIVE" | "INACTIVE" | "ERROR" | "OFFLINE";
   last_heartbeat?: string;
+  created_at?: string;
+  api_key_hash?: string;
 }
 
 interface NodeAnalytics {
@@ -24,6 +26,7 @@ export function InstancePoolsSection() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [nodeAnalytics, setNodeAnalytics] = useState<Record<number, NodeAnalytics>>({});
   const [loading, setLoading] = useState(true);
+  const [configDialogNode, setConfigDialogNode] = useState<Node | null>(null);
 
   useEffect(() => {
     const fetchNodesData = async () => {
@@ -109,56 +112,70 @@ export function InstancePoolsSection() {
   }
 
   if (nodes.length === 0) {
-    return (
-      <div>
-        <h2 className="text-lg font-medium mb-4">Active Autoscaling Nodes</h2>
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No active nodes found. Add some nodes to see their metrics.</p>
-        </div>
-      </div>
-    );
+    return null; // Empty state is handled at the dashboard level now
   }
 
   return (
-    <div>
-      <h2 className="text-lg font-medium mb-4">Active Autoscaling Nodes</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {nodes.slice(0, 8).map((node) => {
-          const analytics = nodeAnalytics[node.id] || { 
-            avg_cpu_utilization: 0, 
-            avg_memory_utilization: 0, 
-            current_instances: 0, 
-            max_instances: 0 
-          };
-          
-          const getNodeStatus = (): "healthy" | "warning" | "error" | "inactive" => {
-            if (!node.last_heartbeat) return "inactive";
+    <>
+      <div>
+        <h2 className="text-lg font-medium mb-4">Active Autoscaling Nodes</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {nodes.slice(0, 8).map((node) => {
+            const analytics = nodeAnalytics[node.id] || { 
+              avg_cpu_utilization: 0, 
+              avg_memory_utilization: 0, 
+              current_instances: 0, 
+              max_instances: 0 
+            };
             
-            const lastHeartbeat = new Date(node.last_heartbeat + 'Z'); // Ensure UTC
-            const now = new Date();
-            const timeDiff = now.getTime() - lastHeartbeat.getTime();
-            const minutesDiff = timeDiff / (1000 * 60);
+            const getNodeStatus = (): "healthy" | "warning" | "error" | "inactive" => {
+              if (!node.last_heartbeat) return "inactive";
+              
+              const lastHeartbeat = new Date(node.last_heartbeat + 'Z'); // Ensure UTC
+              const now = new Date();
+              const timeDiff = now.getTime() - lastHeartbeat.getTime();
+              const minutesDiff = timeDiff / (1000 * 60);
+              
+              if (minutesDiff > 10) return "error";
+              if (minutesDiff > 5) return "warning";
+              return "healthy";
+            };
             
-            if (minutesDiff > 10) return "error";
-            if (minutesDiff > 5) return "warning";
-            return "healthy";
-          };
-          
-          return (
-            <InstancePoolCard
-              key={node.id}
-              name={node.name}
-              instances={analytics.current_instances}
-              maxInstances={analytics.max_instances}
-              status={getNodeStatus()}
-              region={node.region}
-              cpuUsage={Math.round(analytics.avg_cpu_utilization)}
-              memoryUsage={Math.round(analytics.avg_memory_utilization)}
-              onRefresh={() => handleRefreshNode(node.id)}
-            />
-          );
-        })}
+            return (
+              <InstancePoolCard
+                key={node.id}
+                name={node.name}
+                instances={analytics.current_instances}
+                maxInstances={analytics.max_instances}
+                status={getNodeStatus()}
+                region={node.region}
+                cpuUsage={Math.round(analytics.avg_cpu_utilization)}
+                memoryUsage={Math.round(analytics.avg_memory_utilization)}
+                nodeId={node.id}
+                onRefresh={() => handleRefreshNode(node.id)}
+                onConfigure={() => setConfigDialogNode(node)}
+              />
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Node Config Dialog */}
+      {configDialogNode && (
+        <NodeConfigDialog
+          isOpen={!!configDialogNode}
+          onClose={() => setConfigDialogNode(null)}
+          node={{
+            ...configDialogNode,
+            created_at: configDialogNode.created_at || new Date().toISOString()
+          }}
+          onNodeDeleted={() => {
+            setConfigDialogNode(null);
+            // Trigger a refresh
+            window.location.reload();
+          }}
+        />
+      )}
+    </>
   );
 }
