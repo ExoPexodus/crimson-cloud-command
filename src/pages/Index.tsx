@@ -8,7 +8,6 @@ import { SystemMetricsCards } from "@/components/dashboard/SystemMetricsCards";
 import { InstancePoolsSection } from "@/components/dashboard/InstancePoolsSection";
 import { AlertsStrip } from "@/components/dashboard/AlertsStrip";
 import { ScalingEventsFeed } from "@/components/dashboard/ScalingEventsFeed";
-import { QuickActionsPanel } from "@/components/dashboard/QuickActionsPanel";
 import { EmptyDashboardState } from "@/components/dashboard/EmptyDashboardState";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
 import { useState } from "react";
@@ -45,14 +44,9 @@ const Index = () => {
                 <EmptyDashboardState onRegisterNode={() => setIsNodeSetupOpen(true)} />
               ) : (
                 <>
-                  {/* Main Content Grid: Scaling Events + Quick Actions */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div className="lg:col-span-2">
-                      <ScalingEventsFeed />
-                    </div>
-                    <div className="lg:col-span-1">
-                      <QuickActionsPanel onRegisterNode={() => setIsNodeSetupOpen(true)} />
-                    </div>
+                  {/* Recent Scaling Events */}
+                  <div className="mb-6">
+                    <ScalingEventsFeed />
                   </div>
 
                   {/* Instance Pools Grid */}
