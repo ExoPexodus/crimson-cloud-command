@@ -61,6 +61,19 @@ interface NodeAnalytics {
   max_instances: number;
 }
 
+interface NodeLifecycleLog {
+  id: number;
+  node_id: number;
+  node_name: string | null;
+  event_type: string;
+  previous_status: string | null;
+  new_status: string;
+  reason: string | null;
+  triggered_by: string | null;
+  metadata: string | null;
+  timestamp: string;
+}
+
 interface PublicConfig {
   keycloak_enabled: boolean;
   keycloak_url: string;
@@ -244,6 +257,20 @@ class ApiClient {
   // Node Analytics
   async getNodeAnalytics(nodeId: number): Promise<ApiResponse<NodeAnalytics>> {
     return this.request(`/nodes/${nodeId}/analytics`);
+  }
+
+  // Node Lifecycle Logs
+  async getNodeLifecycleLogs(
+    nodeId?: number,
+    eventType?: string,
+    limit: number = 100
+  ): Promise<ApiResponse<NodeLifecycleLog[]>> {
+    const params = new URLSearchParams();
+    if (nodeId) params.append('node_id', nodeId.toString());
+    if (eventType) params.append('event_type', eventType);
+    params.append('limit', limit.toString());
+    
+    return this.request(`/nodes/lifecycle-logs?${params.toString()}`);
   }
 
   // Metrics
