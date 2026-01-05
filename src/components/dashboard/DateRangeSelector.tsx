@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -25,12 +25,6 @@ export function DateRangeSelector({ onRangeChange, defaultRange = "24h" }: DateR
     { value: "30d", label: "Last 30 Days" },
     { value: "custom", label: "Custom Range" }
   ];
-
-  // Trigger initial callback on mount to sync parent state
-  useEffect(() => {
-    handleRangeSelect(defaultRange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleRangeSelect = (value: string) => {
     setSelectedRange(value);
