@@ -108,40 +108,48 @@ class DashboardAnalyticsCalculator:
     def get_current_running_instances(db: Session) -> int:
         """
         Total instances currently running across all active pools.
-        Gets the latest analytics record for each pool from nodes that are online (heartbeat within 5 min).
+        Uses fallback logic: tries 5 min, then 15 min, then 30 min windows.
         """
         try:
-            five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
+            # Try progressively larger time windows for more resilient data retrieval
+            time_windows = [5, 15, 30]
             
-            # Subquery to get the latest analytics record for each pool
-            latest_analytics_subquery = db.query(
-                PoolAnalytics.pool_id,
-                func.max(PoolAnalytics.timestamp).label('max_timestamp')
-            ).filter(
-                PoolAnalytics.timestamp >= five_minutes_ago
-            ).group_by(
-                PoolAnalytics.pool_id
-            ).subquery()
+            for minutes in time_windows:
+                time_ago = datetime.utcnow() - timedelta(minutes=minutes)
+                
+                # Subquery to get the latest analytics record for each pool
+                latest_analytics_subquery = db.query(
+                    PoolAnalytics.pool_id,
+                    func.max(PoolAnalytics.timestamp).label('max_timestamp')
+                ).filter(
+                    PoolAnalytics.timestamp >= time_ago
+                ).group_by(
+                    PoolAnalytics.pool_id
+                ).subquery()
+                
+                # Join to get the full records and sum current_instances
+                total = db.query(
+                    func.sum(PoolAnalytics.current_instances)
+                ).join(
+                    latest_analytics_subquery,
+                    and_(
+                        PoolAnalytics.pool_id == latest_analytics_subquery.c.pool_id,
+                        PoolAnalytics.timestamp == latest_analytics_subquery.c.max_timestamp
+                    )
+                ).join(
+                    Node,
+                    PoolAnalytics.node_id == Node.id
+                ).filter(
+                    Node.last_heartbeat >= time_ago,
+                    Node.status == NodeStatus.ACTIVE
+                ).scalar()
+                
+                if total and total > 0:
+                    logger.debug(f"Found {total} running instances in {minutes}min window")
+                    return int(total)
             
-            # Join to get the full records and sum current_instances
-            # Also ensure the node is active
-            total = db.query(
-                func.sum(PoolAnalytics.current_instances)
-            ).join(
-                latest_analytics_subquery,
-                and_(
-                    PoolAnalytics.pool_id == latest_analytics_subquery.c.pool_id,
-                    PoolAnalytics.timestamp == latest_analytics_subquery.c.max_timestamp
-                )
-            ).join(
-                Node,
-                PoolAnalytics.node_id == Node.id
-            ).filter(
-                Node.last_heartbeat >= five_minutes_ago,
-                Node.status == NodeStatus.ACTIVE
-            ).scalar()
-            
-            return int(total) if total else 0
+            # No data found in any window
+            return 0
         except Exception as e:
             logger.error(f"Error calculating current running instances: {str(e)}")
             return 0
@@ -149,13 +157,14 @@ class DashboardAnalyticsCalculator:
     @staticmethod
     def get_active_nodes(db: Session) -> int:
         """
-        Count of nodes with recent heartbeats (within last 5 minutes) and status ACTIVE.
+        Count of nodes with recent heartbeats (within last 10 minutes) and status ACTIVE.
+        Extended from 5 to 10 minutes to be more resilient to brief connectivity issues.
         """
         try:
-            five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
+            ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
             
             count = db.query(func.count(Node.id)).filter(
-                Node.last_heartbeat >= five_minutes_ago,
+                Node.last_heartbeat >= ten_minutes_ago,
                 Node.status == NodeStatus.ACTIVE
             ).scalar()
             
@@ -168,51 +177,56 @@ class DashboardAnalyticsCalculator:
     def get_avg_system_metrics(db: Session) -> Dict[str, float]:
         """
         Average CPU and memory utilization across all active pools.
-        Gets the latest analytics record for each pool and averages the metrics.
+        Uses fallback logic: tries 5 min, then 15 min, then 30 min windows.
         """
         try:
-            five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
+            time_windows = [5, 15, 30]
             
-            # Subquery to get the latest analytics record for each pool
-            latest_analytics_subquery = db.query(
-                PoolAnalytics.pool_id,
-                func.max(PoolAnalytics.timestamp).label('max_timestamp')
-            ).filter(
-                PoolAnalytics.timestamp >= five_minutes_ago
-            ).group_by(
-                PoolAnalytics.pool_id
-            ).subquery()
+            for minutes in time_windows:
+                time_ago = datetime.utcnow() - timedelta(minutes=minutes)
+                
+                # Subquery to get the latest analytics record for each pool
+                latest_analytics_subquery = db.query(
+                    PoolAnalytics.pool_id,
+                    func.max(PoolAnalytics.timestamp).label('max_timestamp')
+                ).filter(
+                    PoolAnalytics.timestamp >= time_ago
+                ).group_by(
+                    PoolAnalytics.pool_id
+                ).subquery()
+                
+                # Get the latest records
+                latest_records = db.query(
+                    PoolAnalytics.avg_cpu_utilization,
+                    PoolAnalytics.avg_memory_utilization
+                ).join(
+                    latest_analytics_subquery,
+                    and_(
+                        PoolAnalytics.pool_id == latest_analytics_subquery.c.pool_id,
+                        PoolAnalytics.timestamp == latest_analytics_subquery.c.max_timestamp
+                    )
+                ).join(
+                    Node,
+                    PoolAnalytics.node_id == Node.id
+                ).filter(
+                    Node.last_heartbeat >= time_ago,
+                    Node.status == NodeStatus.ACTIVE
+                ).all()
+                
+                if latest_records:
+                    # Calculate averages
+                    total_cpu = sum(record.avg_cpu_utilization or 0 for record in latest_records)
+                    total_memory = sum(record.avg_memory_utilization or 0 for record in latest_records)
+                    count = len(latest_records)
+                    
+                    logger.debug(f"Found {count} records for avg metrics in {minutes}min window")
+                    return {
+                        "avg_cpu": round(total_cpu / count, 2) if count > 0 else 0.0,
+                        "avg_memory": round(total_memory / count, 2) if count > 0 else 0.0
+                    }
             
-            # Get the latest records
-            latest_records = db.query(
-                PoolAnalytics.avg_cpu_utilization,
-                PoolAnalytics.avg_memory_utilization
-            ).join(
-                latest_analytics_subquery,
-                and_(
-                    PoolAnalytics.pool_id == latest_analytics_subquery.c.pool_id,
-                    PoolAnalytics.timestamp == latest_analytics_subquery.c.max_timestamp
-                )
-            ).join(
-                Node,
-                PoolAnalytics.node_id == Node.id
-            ).filter(
-                Node.last_heartbeat >= five_minutes_ago,
-                Node.status == NodeStatus.ACTIVE
-            ).all()
-            
-            if not latest_records:
-                return {"avg_cpu": 0.0, "avg_memory": 0.0}
-            
-            # Calculate averages
-            total_cpu = sum(record.avg_cpu_utilization for record in latest_records)
-            total_memory = sum(record.avg_memory_utilization for record in latest_records)
-            count = len(latest_records)
-            
-            return {
-                "avg_cpu": round(total_cpu / count, 2) if count > 0 else 0.0,
-                "avg_memory": round(total_memory / count, 2) if count > 0 else 0.0
-            }
+            # No data found in any window
+            return {"avg_cpu": 0.0, "avg_memory": 0.0}
         except Exception as e:
             logger.error(f"Error calculating avg system metrics: {str(e)}")
             return {"avg_cpu": 0.0, "avg_memory": 0.0}
