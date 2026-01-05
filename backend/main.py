@@ -263,14 +263,22 @@ async def keycloak_login(login_request: KeycloakLoginRequest, db: Session = Depe
             details={"provider": "keycloak", "roles": user_roles}
         )
         
+        # Extract decoded claims if available
+        decoded_claims = token_data.get('decoded_claims', {})
+        
         return {
             "access_token": local_token,
             "token_type": "bearer", 
             "user": user,
             "keycloak_data": keycloak_data,
-            "token_data": token_data,
+            "token_data": {
+                "token_type": token_data.get('token_type'),
+                "expires_in": token_data.get('expires_in'),
+                "scope": token_data.get('scope')
+            },
             "roles": user_roles,
-            "groups": keycloak_data.get('groups', [])
+            "groups": decoded_claims.get('groups', keycloak_data.get('groups', [])),
+            "decoded_claims": decoded_claims
         }
         
     except HTTPException:

@@ -104,6 +104,9 @@ class KeycloakService:
     
     def exchange_code_for_token(self, code: str, redirect_uri: str) -> Optional[Dict[str, Any]]:
         """Exchange authorization code for access token"""
+        import base64
+        import json
+        
         if not self.is_enabled():
             logger.error("❌ Keycloak client not enabled - cannot exchange code")
             return None
@@ -131,6 +134,51 @@ class KeycloakService:
             logger.info("✅ Successfully exchanged code for token")
             logger.info(f"🎫 Token type: {token.get('token_type', 'unknown')}")
             logger.info(f"⏰ Expires in: {token.get('expires_in', 'unknown')} seconds")
+            
+            # Decode and log JWT access token claims
+            access_token = token.get('access_token')
+            if access_token:
+                try:
+                    parts = access_token.split('.')
+                    if len(parts) == 3:
+                        # Add padding if needed
+                        payload_b64 = parts[1]
+                        padding = 4 - len(payload_b64) % 4
+                        if padding != 4:
+                            payload_b64 += '=' * padding
+                        payload = base64.urlsafe_b64decode(payload_b64)
+                        decoded_claims = json.loads(payload)
+                        
+                        print("\n" + "=" * 80)
+                        print("🔍 DECODED JWT ACCESS TOKEN CLAIMS:")
+                        print("=" * 80)
+                        for key, value in decoded_claims.items():
+                            print(f"  {key}: {value}")
+                        print("=" * 80)
+                        
+                        # Specifically highlight group-related claims
+                        print("\n🎭 GROUP-RELATED CLAIMS (IMPORTANT FOR ROLE MAPPING):")
+                        print(f"  groups: {decoded_claims.get('groups', 'NOT PRESENT')}")
+                        print(f"  realm_access.roles: {decoded_claims.get('realm_access', {}).get('roles', 'NOT PRESENT')}")
+                        print(f"  resource_access: {decoded_claims.get('resource_access', 'NOT PRESENT')}")
+                        
+                        # Log to file as well
+                        logger.info("=" * 80)
+                        logger.info("🔍 DECODED JWT ACCESS TOKEN CLAIMS:")
+                        logger.info("=" * 80)
+                        for key, value in decoded_claims.items():
+                            logger.info(f"  {key}: {value}")
+                        logger.info("=" * 80)
+                        logger.info("🎭 GROUP-RELATED CLAIMS:")
+                        logger.info(f"  groups: {decoded_claims.get('groups', 'NOT PRESENT')}")
+                        logger.info(f"  realm_access.roles: {decoded_claims.get('realm_access', {}).get('roles', 'NOT PRESENT')}")
+                        logger.info(f"  resource_access: {decoded_claims.get('resource_access', 'NOT PRESENT')}")
+                        
+                        # Store decoded claims in token for later use
+                        token['decoded_claims'] = decoded_claims
+                except Exception as decode_error:
+                    logger.warning(f"⚠️ Could not decode JWT for logging: {decode_error}")
+                    print(f"⚠️ Could not decode JWT for logging: {decode_error}")
             
             return token
             

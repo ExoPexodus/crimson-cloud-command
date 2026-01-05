@@ -24,6 +24,7 @@ interface User {
   role: 'USER' | 'DEVOPS' | 'ADMIN';
   auth_provider: 'local' | 'keycloak';
   is_active: boolean;
+  role_override?: boolean;
   created_at: string;
 }
 
@@ -346,7 +347,7 @@ export default function UsersPage() {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    {user.auth_provider === 'local' && user.id !== currentUser?.id && (
+                    {user.id !== currentUser?.id && (
                       <Select 
                         value={user.role} 
                         onValueChange={(value) => updateUserRole(user.id, value)}
@@ -363,9 +364,15 @@ export default function UsersPage() {
                       </Select>
                     )}
                     
-                    {user.auth_provider === 'keycloak' && (
-                      <Badge variant="outline" className="text-xs">
-                        Managed in Keycloak
+                    {user.auth_provider === 'keycloak' && user.role_override && (
+                      <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">
+                        Role Overridden
+                      </Badge>
+                    )}
+                    
+                    {user.auth_provider === 'keycloak' && !user.role_override && (
+                      <Badge variant="outline" className="text-xs text-blue-500 border-blue-500">
+                        Keycloak Managed
                       </Badge>
                     )}
                     

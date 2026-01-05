@@ -194,10 +194,15 @@ class AuthService:
             old_role = user.role
             user.keycloak_user_id = keycloak_user_id
             user.auth_provider = AuthProvider.KEYCLOAK
-            user.role = app_role
             user.full_name = full_name
-            logger.info(f"✅ Updated existing Keycloak user: {email}")
-            logger.info(f"🔄 Role change: {old_role} -> {app_role}")
+            
+            # Only update role from Keycloak if role_override is False
+            if not getattr(user, 'role_override', False):
+                user.role = app_role
+                logger.info(f"✅ Updated existing Keycloak user: {email}")
+                logger.info(f"🔄 Role change: {old_role} -> {app_role}")
+            else:
+                logger.info(f"⚠️ Skipping role update for {email} - manual override in place (current role: {user.role})")
         else:
             # Create new user
             user = User(
@@ -262,19 +267,42 @@ class UserService:
         return db.query(User).all()
     
     @staticmethod
-    def update_user_role(db: Session, user_id: int, new_role: UserRole) -> Optional[User]:
-        """Update user role (admin only, local users only)"""
+    def update_user_role(db: Session, user_id: int, new_role: UserRole, allow_keycloak_override: bool = True) -> Optional[User]:
+        """Update user role (admin only). For Keycloak users, sets role_override flag."""
+        logger = logging.getLogger(__name__)
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return None
         
-        # Only allow role changes for local users
+        # For Keycloak users, set the override flag
         if user.auth_provider != AuthProvider.LOCAL:
-            raise ValueError("Cannot modify roles for non-local users")
+            if not allow_keycloak_override:
+                raise ValueError("Cannot modify roles for non-local users without override permission")
+            user.role_override = True  # Mark as manually overridden
+            logger.info(f"🔄 Setting role override for Keycloak user {user.email}")
         
+        old_role = user.role
         user.role = new_role
         db.commit()
         db.refresh(user)
+        logger.info(f"✅ Updated user {user.email} role from {old_role} to {new_role}")
+        return user
+    
+    @staticmethod
+    def reset_role_override(db: Session, user_id: int) -> Optional[User]:
+        """Reset role override for a Keycloak user, allowing Keycloak roles to take effect on next login"""
+        logger = logging.getLogger(__name__)
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        
+        if user.auth_provider != AuthProvider.KEYCLOAK:
+            raise ValueError("Role override reset only applies to Keycloak users")
+        
+        user.role_override = False
+        db.commit()
+        db.refresh(user)
+        logger.info(f"✅ Reset role override for Keycloak user {user.email}")
         return user
     
     @staticmethod
