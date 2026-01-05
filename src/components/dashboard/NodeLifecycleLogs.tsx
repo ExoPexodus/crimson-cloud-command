@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RefreshCw, History, ArrowUp, ArrowDown, Server } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { RefreshCw, History, ArrowUp, ArrowDown, Server, Download, FileJson, FileSpreadsheet, Radio } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface LifecycleLog {
   id: number;
@@ -23,22 +25,29 @@ interface LifecycleLog {
 interface NodeLifecycleLogsProps {
   nodeId?: number;
   nodes?: Array<{ id: number; name: string }>;
+  pollingInterval?: number; // in milliseconds
+  enableNotifications?: boolean;
 }
 
-export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps) => {
+export const NodeLifecycleLogs = ({ 
+  nodeId, 
+  nodes = [], 
+  pollingInterval = 15000,
+  enableNotifications = true 
+}: NodeLifecycleLogsProps) => {
+  const { toast } = useToast();
   const [logs, setLogs] = useState<LifecycleLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filterNodeId, setFilterNodeId] = useState<string>(nodeId?.toString() || "all");
   const [filterEventType, setFilterEventType] = useState<string>("all");
+  const [isPolling, setIsPolling] = useState(true);
+  const lastLogIdRef = useRef<number | null>(null);
+  const notifiedLogsRef = useRef<Set<number>>(new Set());
 
-  useEffect(() => {
-    fetchLogs();
-  }, [filterNodeId, filterEventType]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async (isInitial = false) => {
     try {
-      setRefreshing(true);
+      if (!isInitial) setRefreshing(true);
       const params: { node_id?: number; event_type?: string; limit?: number } = { limit: 100 };
       
       if (filterNodeId !== "all") {
@@ -55,7 +64,50 @@ export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps
       );
       
       if (response.data) {
-        setLogs(response.data);
+        const newLogs = response.data;
+        
+        // Check for new offline events and show notifications
+        if (enableNotifications && !isInitial && newLogs.length > 0) {
+          const newOfflineEvents = newLogs.filter(log => 
+            log.event_type === "WENT_OFFLINE" && 
+            !notifiedLogsRef.current.has(log.id) &&
+            (lastLogIdRef.current === null || log.id > lastLogIdRef.current)
+          );
+          
+          newOfflineEvents.forEach(log => {
+            notifiedLogsRef.current.add(log.id);
+            toast({
+              title: "⚠️ Node Went Offline",
+              description: `${log.node_name || `Node #${log.node_id}`} went offline${log.reason ? `: ${log.reason}` : ''}`,
+              variant: "destructive",
+            });
+          });
+
+          // Also notify for nodes coming back online
+          const newOnlineEvents = newLogs.filter(log => 
+            log.event_type === "CAME_ONLINE" && 
+            !notifiedLogsRef.current.has(log.id) &&
+            (lastLogIdRef.current === null || log.id > lastLogIdRef.current)
+          );
+          
+          newOnlineEvents.forEach(log => {
+            notifiedLogsRef.current.add(log.id);
+            toast({
+              title: "✅ Node Back Online",
+              description: `${log.node_name || `Node #${log.node_id}`} is back online`,
+            });
+          });
+        }
+        
+        // Update last log ID for tracking new events
+        if (newLogs.length > 0) {
+          const maxId = Math.max(...newLogs.map(l => l.id));
+          if (lastLogIdRef.current === null || maxId > lastLogIdRef.current) {
+            lastLogIdRef.current = maxId;
+          }
+        }
+        
+        setLogs(newLogs);
       }
     } catch (error) {
       console.error("Error fetching lifecycle logs:", error);
@@ -63,7 +115,30 @@ export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [filterNodeId, filterEventType, enableNotifications, toast]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchLogs(true);
+  }, []);
+
+  // Refetch when filters change
+  useEffect(() => {
+    if (!loading) {
+      fetchLogs();
+    }
+  }, [filterNodeId, filterEventType]);
+
+  // Polling for real-time updates
+  useEffect(() => {
+    if (!isPolling) return;
+    
+    const interval = setInterval(() => {
+      fetchLogs();
+    }, pollingInterval);
+    
+    return () => clearInterval(interval);
+  }, [isPolling, pollingInterval, fetchLogs]);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp + 'Z');
@@ -84,6 +159,11 @@ export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const formatFullTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp + 'Z');
+    return date.toISOString();
   };
 
   const getEventIcon = (eventType: string) => {
@@ -124,6 +204,70 @@ export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps
     );
   };
 
+  const exportAsJSON = () => {
+    const data = logs.map(log => ({
+      id: log.id,
+      node_id: log.node_id,
+      node_name: log.node_name,
+      event_type: log.event_type,
+      previous_status: log.previous_status,
+      new_status: log.new_status,
+      reason: log.reason,
+      triggered_by: log.triggered_by,
+      timestamp: formatFullTimestamp(log.timestamp)
+    }));
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `node-lifecycle-logs-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Export Complete",
+      description: `Exported ${logs.length} logs as JSON`,
+    });
+  };
+
+  const exportAsCSV = () => {
+    const headers = ['ID', 'Node ID', 'Node Name', 'Event Type', 'Previous Status', 'New Status', 'Reason', 'Triggered By', 'Timestamp'];
+    const rows = logs.map(log => [
+      log.id,
+      log.node_id,
+      log.node_name || '',
+      log.event_type,
+      log.previous_status || '',
+      log.new_status,
+      log.reason || '',
+      log.triggered_by || '',
+      formatFullTimestamp(log.timestamp)
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `node-lifecycle-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Export Complete",
+      description: `Exported ${logs.length} logs as CSV`,
+    });
+  };
+
   return (
     <Card className="glass-card">
       <div className="p-4 border-b border-dark-bg-light/30">
@@ -131,6 +275,12 @@ export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps
           <div className="flex items-center gap-2">
             <History size={18} className="text-dark-blue-400" />
             <h3 className="font-semibold">Node Lifecycle Audit Log</h3>
+            {isPolling && (
+              <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10 gap-1">
+                <Radio size={10} className="animate-pulse" />
+                Live
+              </Badge>
+            )}
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
@@ -163,11 +313,47 @@ export const NodeLifecycleLogs = ({ nodeId, nodes = [] }: NodeLifecycleLogsProps
               </SelectContent>
             </Select>
             
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-dark-bg-light hover:bg-dark-bg-light"
+                  disabled={logs.length === 0}
+                >
+                  <Download size={14} className="mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportAsJSON}>
+                  <FileJson size={14} className="mr-2" />
+                  Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportAsCSV}>
+                  <FileSpreadsheet size={14} className="mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Live Toggle */}
+            <Button
+              variant={isPolling ? "default" : "outline"}
+              size="sm"
+              className={`h-8 ${isPolling ? 'bg-green-600 hover:bg-green-700' : 'border-dark-bg-light hover:bg-dark-bg-light'}`}
+              onClick={() => setIsPolling(!isPolling)}
+              title={isPolling ? "Disable live updates" : "Enable live updates"}
+            >
+              <Radio size={14} className={isPolling ? "animate-pulse" : ""} />
+            </Button>
+            
             <Button
               variant="outline"
               size="sm"
               className="h-8 border-dark-bg-light hover:bg-dark-bg-light"
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               disabled={refreshing}
             >
               <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
