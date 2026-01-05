@@ -186,6 +186,7 @@ class UserListResponse(BaseModel):
     role: UserRole
     auth_provider: AuthProvider
     is_active: bool
+    role_override: Optional[bool] = False
     created_at: datetime
 
     class Config:

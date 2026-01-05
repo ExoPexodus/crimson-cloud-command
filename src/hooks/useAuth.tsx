@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { apiClient } from '@/lib/api';
+import { useInactivityTimeout } from '@/hooks/useInactivityTimeout';
 
 interface User {
   id: number;
@@ -20,14 +21,34 @@ interface AuthContextType {
   logout: () => void;
   loading: boolean;
   hasRole: (role: 'USER' | 'DEVOPS' | 'ADMIN') => boolean;
+  sessionTimeoutMinutes: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Session timeout in minutes (configurable)
+const SESSION_TIMEOUT_MINUTES = 30;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = useCallback(() => {
+    apiClient.logout();
+    setIsAuthenticated(false);
+    setUser(null);
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('last_activity');
+  }, []);
+
+  // Inactivity timeout hook
+  useInactivityTimeout({
+    timeoutMinutes: SESSION_TIMEOUT_MINUTES,
+    warningMinutes: 1,
+    onTimeout: handleLogout,
+    enabled: isAuthenticated
+  });
 
   useEffect(() => {
     // Check if user is already logged in
@@ -90,12 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    apiClient.logout();
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('user_data');
-  };
+  const logout = useCallback(() => {
+    handleLogout();
+  }, [handleLogout]);
 
   const hasRole = (role: 'USER' | 'DEVOPS' | 'ADMIN'): boolean => {
     if (!user) return false;
@@ -115,7 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithKeycloak, 
       logout, 
       loading, 
-      hasRole 
+      hasRole,
+      sessionTimeoutMinutes: SESSION_TIMEOUT_MINUTES
     }}>
       {children}
     </AuthContext.Provider>

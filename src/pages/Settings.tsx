@@ -8,14 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Shield, User, Mail, Calendar, Key } from "lucide-react";
+import { AlertCircle, Shield, User, Mail, Calendar, Key, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiClient } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { formatLocalDate } from "@/lib/dateUtils";
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, sessionTimeoutMinutes } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -196,6 +196,15 @@ const Settings = () => {
                       </div>
                       <span className="text-sm text-foreground">
                         {user?.created_at ? formatLocalDate(user.created_at) : 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Session Timeout</span>
+                      </div>
+                      <span className="text-sm text-foreground">
+                        {sessionTimeoutMinutes} minutes
                       </span>
                     </div>
                   </CardContent>

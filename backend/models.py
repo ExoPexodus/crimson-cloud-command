@@ -108,6 +108,7 @@ class User(Base):
     auth_provider = Column(SQLEnum(AuthProvider), default=AuthProvider.LOCAL)
     keycloak_user_id = Column(String(255), nullable=True, unique=True, index=True)
     is_active = Column(Boolean, default=True)
+    role_override = Column(Boolean, default=False)  # True if admin manually set role for Keycloak user
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class AuditLog(Base):
