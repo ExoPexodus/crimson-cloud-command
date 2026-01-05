@@ -280,3 +280,35 @@ class NodeLifecycleLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Audit Log schemas
+class AuditLogResponse(BaseModel):
+    id: int
+    user_id: Optional[int]
+    user_email: Optional[str]
+    user_role: Optional[str]
+    action: str
+    category: str
+    resource_type: Optional[str]
+    resource_id: Optional[str]
+    resource_name: Optional[str]
+    description: Optional[str]
+    details: Optional[str]
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    status: str
+    error_message: Optional[str]
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogSummaryResponse(BaseModel):
+    period_hours: int
+    category_counts: Dict[str, int]
+    status_counts: Dict[str, int]
+    total_events: int
+    failure_count: int
+    recent_failures: List[Dict[str, Any]]

@@ -19,7 +19,7 @@ from schemas import (
     UserCreate, UserResponse, UserListResponse, UserUpdateRole, UserProfileUpdate,
     Token, AuthResponse, KeycloakLoginRequest, NodeHeartbeatData, HeartbeatResponse,
     SystemAnalyticsResponse, PoolAnalyticsResponse, NodeLifecycleLogResponse,
-    NodeRegister, NodeRegisterResponse, UserRole
+    NodeRegister, NodeRegisterResponse, UserRole, AuditLogResponse, AuditLogSummaryResponse
 )
 from services import (
     NodeService, PoolService, MetricService, 
@@ -27,6 +27,7 @@ from services import (
     NodeConfigurationService, HeartbeatService, AnalyticsService,
     NodeLifecycleService
 )
+from audit_service import AuditService, AuditAction, AuditCategory
 from auth_middleware import get_node_from_api_key
 from role_service import RoleService, require_admin, require_devops, require_user
 from keycloak_service import keycloak_service
@@ -856,6 +857,138 @@ async def get_node_lifecycle_logs(
     except Exception as e:
         logger.error(f"Get node lifecycle logs error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get node lifecycle logs: {str(e)}")
+
+
+# ============================================================================
+# AUDIT LOG ENDPOINTS (Admin only)
+# ============================================================================
+
+@app.get("/admin/audit-logs", response_model=List[AuditLogResponse])
+async def get_audit_logs(
+    category: Optional[str] = None,
+    action: Optional[str] = None,
+    user_id: Optional[int] = None,
+    resource_type: Optional[str] = None,
+    status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get audit logs (admin only)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status_code.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        
+        # Parse dates if provided
+        start_dt = None
+        end_dt = None
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format")
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format")
+        
+        return AuditService.get_audit_logs(
+            db=db,
+            category=category,
+            action=action,
+            user_id=user_id,
+            resource_type=resource_type,
+            status=status,
+            start_date=start_dt,
+            end_date=end_dt,
+            search=search,
+            limit=limit,
+            offset=offset
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get audit logs error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get audit logs: {str(e)}")
+
+
+@app.get("/admin/audit-logs/summary", response_model=AuditLogSummaryResponse)
+async def get_audit_log_summary(
+    hours: int = 24,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get audit log summary statistics (admin only)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        
+        return AuditService.get_audit_summary(db, hours=hours)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get audit summary error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get audit summary: {str(e)}")
+
+
+@app.get("/admin/audit-logs/categories")
+async def get_audit_categories(
+    current_user = Depends(get_current_user)
+):
+    """Get available audit log categories and actions"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        
+        return {
+            "categories": [
+                {"value": "AUTH", "label": "Authentication"},
+                {"value": "NODE", "label": "Node Operations"},
+                {"value": "POOL", "label": "Pool Operations"},
+                {"value": "USER", "label": "User Management"},
+                {"value": "CONFIG", "label": "Configuration"},
+                {"value": "SYSTEM", "label": "System Events"},
+                {"value": "ADMIN", "label": "Admin Operations"}
+            ],
+            "actions": [
+                {"value": "LOGIN_SUCCESS", "label": "Login Success", "category": "AUTH"},
+                {"value": "LOGIN_FAILED", "label": "Login Failed", "category": "AUTH"},
+                {"value": "LOGOUT", "label": "Logout", "category": "AUTH"},
+                {"value": "KEYCLOAK_LOGIN", "label": "Keycloak Login", "category": "AUTH"},
+                {"value": "USER_CREATED", "label": "User Created", "category": "USER"},
+                {"value": "USER_ROLE_CHANGED", "label": "Role Changed", "category": "USER"},
+                {"value": "PROFILE_UPDATED", "label": "Profile Updated", "category": "USER"},
+                {"value": "NODE_REGISTERED", "label": "Node Registered", "category": "NODE"},
+                {"value": "NODE_CREATED", "label": "Node Created", "category": "NODE"},
+                {"value": "NODE_UPDATED", "label": "Node Updated", "category": "NODE"},
+                {"value": "NODE_DELETED", "label": "Node Deleted", "category": "NODE"},
+                {"value": "CONFIG_UPDATED", "label": "Config Updated", "category": "CONFIG"},
+                {"value": "HEARTBEAT_RECEIVED", "label": "Heartbeat", "category": "SYSTEM"}
+            ],
+            "statuses": [
+                {"value": "SUCCESS", "label": "Success"},
+                {"value": "FAILURE", "label": "Failure"}
+            ]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get audit categories error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get audit categories: {str(e)}")
 
 
 if __name__ == "__main__":

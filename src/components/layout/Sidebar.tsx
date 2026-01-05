@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { Home, Settings, Users, Activity, LogOut } from "lucide-react";
+import { Home, Settings, Users, Activity, LogOut, FileText } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -41,6 +41,12 @@ const allManagementItems = [
     title: "Users",
     icon: Users,
     url: "/admin/users",
+    requiredRole: 'ADMIN' as const,
+  },
+  {
+    title: "Audit Logs",
+    icon: FileText,
+    url: "/admin/audit-logs",
     requiredRole: 'ADMIN' as const,
   },
 ];

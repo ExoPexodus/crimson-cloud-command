@@ -74,6 +74,53 @@ interface NodeLifecycleLog {
   timestamp: string;
 }
 
+interface AuditLog {
+  id: number;
+  user_id: number | null;
+  user_email: string | null;
+  user_role: string | null;
+  action: string;
+  category: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  resource_name: string | null;
+  description: string | null;
+  details: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  status: string;
+  error_message: string | null;
+  timestamp: string;
+}
+
+interface AuditLogSummary {
+  period_hours: number;
+  category_counts: Record<string, number>;
+  status_counts: Record<string, number>;
+  total_events: number;
+  failure_count: number;
+  recent_failures: Array<{
+    id: number;
+    action: string;
+    user_email: string | null;
+    error_message: string | null;
+    timestamp: string | null;
+  }>;
+}
+
+interface AuditLogFilters {
+  category?: string;
+  action?: string;
+  user_id?: number;
+  resource_type?: string;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
 interface PublicConfig {
   keycloak_enabled: boolean;
   keycloak_url: string;
@@ -334,7 +381,38 @@ class ApiClient {
   async getPublicConfig(): Promise<ApiResponse<PublicConfig>> {
     return this.request<PublicConfig>('/config');
   }
+
+  // Audit Logs (Admin only)
+  async getAuditLogs(filters: AuditLogFilters = {}): Promise<ApiResponse<AuditLog[]>> {
+    const params = new URLSearchParams();
+    if (filters.category) params.append('category', filters.category);
+    if (filters.action) params.append('action', filters.action);
+    if (filters.user_id) params.append('user_id', filters.user_id.toString());
+    if (filters.resource_type) params.append('resource_type', filters.resource_type);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.start_date) params.append('start_date', filters.start_date);
+    if (filters.end_date) params.append('end_date', filters.end_date);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.offset) params.append('offset', filters.offset.toString());
+    
+    return this.request(`/admin/audit-logs?${params.toString()}`);
+  }
+
+  async getAuditLogSummary(hours: number = 24): Promise<ApiResponse<AuditLogSummary>> {
+    return this.request(`/admin/audit-logs/summary?hours=${hours}`);
+  }
+
+  async getAuditLogCategories(): Promise<ApiResponse<{
+    categories: Array<{ value: string; label: string }>;
+    actions: Array<{ value: string; label: string; category: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }>> {
+    return this.request('/admin/audit-logs/categories');
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
 export default apiClient;
+
+export type { AuditLog, AuditLogSummary, AuditLogFilters };
