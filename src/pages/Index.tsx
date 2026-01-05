@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSystemAnalytics } from "@/hooks/useSystemAnalytics";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { SystemMetricsCards } from "@/components/dashboard/SystemMetricsCards";
-import { MetricsChartsSection } from "@/components/dashboard/MetricsChartsSection";
+
 import { InstancePoolsSection } from "@/components/dashboard/InstancePoolsSection";
 
 const Index = () => {
@@ -30,7 +30,7 @@ const Index = () => {
               
               <SystemMetricsCards analytics={analytics} loading={loading} />
               
-              <MetricsChartsSection />
+              
               
               <InstancePoolsSection />
             </div>
