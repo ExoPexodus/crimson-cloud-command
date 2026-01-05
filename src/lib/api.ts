@@ -38,6 +38,7 @@ interface PoolAnalytics {
   is_active: boolean;
   scaling_event: string | null;
   scaling_reason: string | null;
+  node_name: string | null;
 }
 
 interface NodeRegisterRequest {

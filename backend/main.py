@@ -710,20 +710,52 @@ async def get_system_analytics(db: Session = Depends(get_db), current_user = Dep
         logger.error(f"Get system analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get system analytics: {str(e)}")
 
-@app.get("/analytics/pools", response_model=List[PoolAnalyticsResponse])
+@app.get("/analytics/pools")
 async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    """Get pool analytics for the specified time period"""
+    """Get pool analytics for the specified time period with node names"""
     try:
         from datetime import datetime, timedelta
-        from models import PoolAnalytics
+        from models import PoolAnalytics, Node
         
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        query = db.query(PoolAnalytics).filter(PoolAnalytics.timestamp >= cutoff_time)
+        
+        # Join with nodes table to get node name
+        query = db.query(
+            PoolAnalytics,
+            Node.name.label('node_name')
+        ).outerjoin(
+            Node, PoolAnalytics.node_id == Node.id
+        ).filter(PoolAnalytics.timestamp >= cutoff_time)
         
         if node_id:
             query = query.filter(PoolAnalytics.node_id == node_id)
         
-        return query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
+        results = query.order_by(PoolAnalytics.timestamp.desc()).limit(1000).all()
+        
+        # Convert to response format with node_name
+        response = []
+        for analytics, node_name in results:
+            item = {
+                "id": analytics.id,
+                "pool_id": analytics.pool_id,
+                "node_id": analytics.node_id,
+                "oracle_pool_id": analytics.oracle_pool_id,
+                "timestamp": analytics.timestamp.isoformat() if analytics.timestamp else None,
+                "current_instances": analytics.current_instances,
+                "active_instances": analytics.active_instances,
+                "avg_cpu_utilization": analytics.avg_cpu_utilization,
+                "avg_memory_utilization": analytics.avg_memory_utilization,
+                "max_cpu_utilization": analytics.max_cpu_utilization,
+                "max_memory_utilization": analytics.max_memory_utilization,
+                "pool_status": analytics.pool_status,
+                "is_active": analytics.is_active,
+                "scaling_event": analytics.scaling_event,
+                "scaling_reason": analytics.scaling_reason,
+                "node_name": node_name
+            }
+            response.append(item)
+        
+        return response
     except Exception as e:
         logger.error(f"Get pool analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get pool analytics: {str(e)}")

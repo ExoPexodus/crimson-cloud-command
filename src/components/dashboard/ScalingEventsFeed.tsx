@@ -10,6 +10,7 @@ interface ScalingEvent {
   poolId: number;
   nodeId: number;
   oraclePoolId: string;
+  nodeName: string | null;
   eventType: "SCALE_UP" | "SCALE_DOWN" | "MANUAL_SCALE" | "FAILED";
   reason: string | null;
   currentInstances: number;
@@ -25,6 +26,7 @@ interface PoolAnalytics {
   current_instances: number;
   scaling_event: string | null;
   scaling_reason: string | null;
+  node_name: string | null;
 }
 
 export function ScalingEventsFeed() {
@@ -43,6 +45,7 @@ export function ScalingEventsFeed() {
               poolId: p.pool_id,
               nodeId: p.node_id,
               oraclePoolId: p.oracle_pool_id,
+              nodeName: p.node_name,
               eventType: parseEventType(p.scaling_event),
               reason: p.scaling_reason,
               currentInstances: p.current_instances,
@@ -174,7 +177,7 @@ export function ScalingEventsFeed() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium truncate">
-                    Pool {event.oraclePoolId.slice(-8)}
+                    {event.nodeName || `Pool ${event.oraclePoolId.slice(-8)}`}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 rounded bg-muted/30">
                     {getEventLabel(event.eventType)}

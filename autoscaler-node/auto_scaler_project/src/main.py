@@ -382,10 +382,17 @@ def process_pool(pool, autoscaler_node):
                 # Evaluate metrics and get scaling decision FIRST
                 scaling_result = evaluate_metrics(collector, thresholds, scaling_limits, scheduler_active_callback)
                 
+                # Determine correct instance count - use scaling result if available
+                if scaling_result and scaling_result.get('scaling_event') and scaling_result.get('new_instances') is not None:
+                    current_instance_count = scaling_result.get('new_instances')
+                    logging.info(f"Using post-scaling instance count: {current_instance_count}")
+                else:
+                    current_instance_count = pool_details.size
+                
                 # Build analytics data WITH scaling result
                 analytics_data = {
-                    'current_instances': pool_details.size,
-                    'active_instances': pool_details.size,  # Simplified for now
+                    'current_instances': current_instance_count,
+                    'active_instances': current_instance_count,  # Simplified for now
                     'avg_cpu_utilization': avg_cpu,
                     'avg_memory_utilization': avg_ram,
                     'max_cpu_utilization': avg_cpu,  # Simplified
