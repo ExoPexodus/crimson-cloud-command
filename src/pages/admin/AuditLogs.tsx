@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Select, 
   SelectContent, 
@@ -29,12 +31,19 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  FileText
+  FileText,
+  CalendarIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import type { AuditLog, AuditLogSummary, AuditLogFilters } from "@/lib/api";
-import { format } from "date-fns";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
+
+type DateRange = {
+  from: Date | undefined;
+  to: Date | undefined;
+};
 
 const AuditLogsPage = () => {
   const { toast } = useToast();
@@ -49,6 +58,7 @@ const AuditLogsPage = () => {
     offset: 0
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [categories, setCategories] = useState<Array<{ value: string; label: string }>>([]);
   const [actions, setActions] = useState<Array<{ value: string; label: string; category: string }>>([]);
 
@@ -114,6 +124,29 @@ const AuditLogsPage = () => {
   const clearFilters = () => {
     setFilters({ limit: 100, offset: 0 });
     setSearchQuery("");
+    setDateRange({ from: undefined, to: undefined });
+  };
+
+  const applyDateRange = (range: DateRange) => {
+    setDateRange(range);
+    setFilters(prev => ({
+      ...prev,
+      start_date: range.from ? startOfDay(range.from).toISOString() : undefined,
+      end_date: range.to ? endOfDay(range.to).toISOString() : undefined,
+      offset: 0
+    }));
+  };
+
+  const setQuickDateRange = (days: number) => {
+    const to = new Date();
+    const from = subDays(to, days);
+    applyDateRange({ from, to });
+  };
+
+  const formatDateRange = () => {
+    if (!dateRange.from) return "Select dates";
+    if (!dateRange.to) return format(dateRange.from, "MMM dd, yyyy");
+    return `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd, yyyy")}`;
   };
 
   const exportLogs = () => {
@@ -208,7 +241,7 @@ const AuditLogsPage = () => {
     }
   };
 
-  const hasActiveFilters = filters.category || filters.action || filters.status || filters.search;
+  const hasActiveFilters = filters.category || filters.action || filters.status || filters.search || dateRange.from;
 
   // Filter actions based on selected category
   const filteredActions = useMemo(() => {
@@ -379,6 +412,84 @@ const AuditLogsPage = () => {
                         <SelectItem value="FAILURE">Failure</SelectItem>
                       </SelectContent>
                     </Select>
+
+                    {/* Date Range Picker */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-9 justify-start text-left font-normal min-w-[180px]",
+                            !dateRange.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon size={14} className="mr-2" />
+                          {formatDateRange()}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <div className="p-3 border-b border-border">
+                          <div className="flex gap-2 flex-wrap">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-xs"
+                              onClick={() => setQuickDateRange(1)}
+                            >
+                              Today
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-xs"
+                              onClick={() => setQuickDateRange(7)}
+                            >
+                              Last 7 days
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-xs"
+                              onClick={() => setQuickDateRange(30)}
+                            >
+                              Last 30 days
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-xs"
+                              onClick={() => setQuickDateRange(90)}
+                            >
+                              Last 90 days
+                            </Button>
+                          </div>
+                        </div>
+                        <Calendar
+                          mode="range"
+                          selected={dateRange}
+                          onSelect={(range) => {
+                            if (range) {
+                              applyDateRange({ from: range.from, to: range.to });
+                            }
+                          }}
+                          numberOfMonths={2}
+                          disabled={(date) => date > new Date()}
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                        {dateRange.from && (
+                          <div className="p-3 border-t border-border flex justify-end">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => applyDateRange({ from: undefined, to: undefined })}
+                            >
+                              Clear dates
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
 
                     {hasActiveFilters && (
                       <Button 
