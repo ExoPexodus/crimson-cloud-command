@@ -374,11 +374,15 @@ def process_pool(pool, autoscaler_node):
                 # Get metrics before scaling evaluation
                 avg_cpu, avg_ram = collector.get_metrics()
                 
-                # Collect analytics data
+                # Collect pool details for analytics
                 pool_details = collector.compute_management_client.get_instance_pool(
                     instance_pool_id=pool['instance_pool_id']
                 ).data
                 
+                # Evaluate metrics and get scaling decision FIRST
+                scaling_result = evaluate_metrics(collector, thresholds, scaling_limits, scheduler_active_callback)
+                
+                # Build analytics data WITH scaling result
                 analytics_data = {
                     'current_instances': pool_details.size,
                     'active_instances': pool_details.size,  # Simplified for now
@@ -388,22 +392,26 @@ def process_pool(pool, autoscaler_node):
                     'max_memory_utilization': avg_ram,  # Simplified
                     'pool_status': 'healthy',
                     'is_active': True,
-                    'scaling_event': None,
-                    'scaling_reason': None
+                    'scaling_event': scaling_result.get('scaling_event') if scaling_result else None,
+                    'scaling_reason': scaling_result.get('scaling_reason') if scaling_result else None
                 }
                 
-                # Add analytics to node for heartbeat
+                # Add analytics to node for heartbeat (includes scaling events)
                 autoscaler_node.add_pool_analytics(pool['instance_pool_id'], analytics_data)
                 
-                # Pass scaling_limits to evaluate_metrics
-                evaluate_metrics(collector, thresholds, scaling_limits, scheduler_active_callback)
+                # Determine wait time based on whether scaling occurred
+                if scaling_result and scaling_result.get('scaling_event'):
+                    logging.info("Scaling occurred, waiting 15 minutes before next evaluation...")
+                    wait_time = 900  # 15 minutes cooldown after scaling
+                else:
+                    wait_time = 300  # 5 minutes normal interval
                 
             except RuntimeError as e:
                 logging.error(f"Runtime error in evaluate_metrics: {e}")
                 raise  # Re-raise to stop further execution
             
-            # Check for stop signal before sleeping
-            if autoscaler_node.stop_all_pools.wait(300):  # 5 minutes with early exit
+            # Check for stop signal while waiting (graceful shutdown aware)
+            if autoscaler_node.stop_all_pools.wait(wait_time):
                 break
                 
     except KeyboardInterrupt:
