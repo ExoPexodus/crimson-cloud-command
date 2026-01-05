@@ -1,7 +1,6 @@
 import oci
 import logging
 import time
-import sys
 import os
 from oci.core import ComputeManagementClient
 from instance_manager.instance_pool import get_instance_pool_details, get_instances_from_instance_pool
@@ -12,16 +11,28 @@ def initialize_oci_client(config):
     return ComputeManagementClient(config)
 
 def scale_up(compute_management_client, instance_pool_id, compartment_id, max_limit):
+    """
+    Scale up the instance pool by one instance.
+    
+    Returns:
+        dict: Scaling result with action, previous_size, new_size, success, and reason
+    """
     try:
         # Fetch current instance pool details
-        pool_details = get_instance_pool_details(compute_management_client,instance_pool_id)
+        pool_details = get_instance_pool_details(compute_management_client, instance_pool_id)
         current_size = pool_details.size
 
         if current_size >= max_limit:
             logging.warning(
                 f"Cannot scale up: Current size ({current_size}) has reached or exceeded the maximum limit ({max_limit})."
             )
-            return
+            return {
+                'action': 'NO_CHANGE',
+                'previous_size': current_size,
+                'new_size': current_size,
+                'success': False,
+                'reason': f'At max limit ({max_limit})'
+            }
 
         # Update the instance pool size (scale up)
         new_size = current_size + 1
@@ -32,13 +43,32 @@ def scale_up(compute_management_client, instance_pool_id, compartment_id, max_li
         )
 
         logging.info(f"Scaled up: Target instance count updated to {new_size}")
-        logging.info("Waiting for 15 minutes after scaling up...")
-        time.sleep(900)
+        
+        return {
+            'action': 'SCALE_UP',
+            'previous_size': current_size,
+            'new_size': new_size,
+            'success': True,
+            'reason': 'Scaled up successfully'
+        }
+        
     except Exception as e:
         logging.error(f"Failed to scale up: {str(e)}")
-        sys.exit(1)
+        return {
+            'action': 'SCALE_UP',
+            'previous_size': None,
+            'new_size': None,
+            'success': False,
+            'reason': f'Error: {str(e)}'
+        }
 
 def scale_down(compute_management_client, instance_pool_id, compartment_id, min_limit, reason="scaling down"):
+    """
+    Scale down the instance pool by one instance.
+    
+    Returns:
+        dict: Scaling result with action, previous_size, new_size, success, and reason
+    """
     try:
         # Fetch current instance pool details
         pool_details = get_instance_pool_details(compute_management_client, instance_pool_id=instance_pool_id)
@@ -48,7 +78,13 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
             logging.warning(
                 f"Cannot scale down: Current size ({current_size}) has reached or is below the minimum limit ({min_limit})."
             )
-            return
+            return {
+                'action': 'NO_CHANGE',
+                'previous_size': current_size,
+                'new_size': current_size,
+                'success': False,
+                'reason': f'At min limit ({min_limit})'
+            }
 
         # Update the instance pool size (scale down)
         new_size = current_size - 1
@@ -60,7 +96,7 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
 
         logging.info(f"Scaled down: Target instance count updated to {new_size}")
         
-        # Retry mechanism to check for terminating instances (3 attempts, 10 seconds apart)
+        # Retry mechanism to check for terminating instances (3 attempts, 30 seconds apart)
         webhook_url = os.getenv("WEBHOOK_URL")
         project_name = os.getenv("PROJECT_NAME")
         
@@ -91,9 +127,20 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
         else:
             logging.warning("WEBHOOK_URL not configured, skipping termination alert")
 
-        logging.info("Waiting for 15 minutes after scaling down...")
-        time.sleep(900)
+        return {
+            'action': 'SCALE_DOWN',
+            'previous_size': current_size,
+            'new_size': new_size,
+            'success': True,
+            'reason': reason
+        }
 
     except Exception as e:
         logging.error(f"Failed to scale down: {str(e)}")
-        sys.exit(1)
+        return {
+            'action': 'SCALE_DOWN',
+            'previous_size': None,
+            'new_size': None,
+            'success': False,
+            'reason': f'Error: {str(e)}'
+        }
