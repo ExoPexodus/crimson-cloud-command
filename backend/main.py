@@ -311,6 +311,23 @@ async def update_profile(
                 detail="User not found"
             )
         
+        # Log profile update
+        changes = []
+        if update_data.full_name:
+            changes.append("name")
+        if update_data.email:
+            changes.append("email")
+        if update_data.new_password:
+            changes.append("password")
+        
+        AuditService.log_user_action(
+            db, AuditAction.PROFILE_UPDATED,
+            current_user.id, current_user.email,
+            acting_user=current_user,
+            description=f"User {current_user.email} updated their profile",
+            details={"fields_changed": changes}
+        )
+        
         logger.info(f"Profile updated for user: {updated_user.email}")
         return updated_user
         
@@ -331,7 +348,18 @@ async def update_profile(
 async def register_node(node: NodeRegister, db: Session = Depends(get_db)):
     """Register a new autoscaling node and generate API key"""
     try:
-        return NodeService.register_node(db, node)
+        result = NodeService.register_node(db, node)
+        
+        # Log node registration
+        AuditService.log_node_action(
+            db, AuditAction.NODE_REGISTERED,
+            result.node_id, node.name,
+            description=f"Node '{node.name}' registered in region {node.region}",
+            details={"region": node.region, "ip_address": node.ip_address},
+            triggered_by="system"
+        )
+        
+        return result
     except Exception as e:
         logger.error(f"Node registration error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Node registration failed: {str(e)}")
@@ -359,7 +387,19 @@ async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_u
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied. Devops role required."
             )
-        return NodeService.create_node(db, node)
+        result = NodeService.create_node(db, node)
+        
+        # Log node creation
+        AuditService.log_node_action(
+            db, AuditAction.NODE_CREATED,
+            result.id, result.name,
+            user=current_user,
+            description=f"Node '{result.name}' created by {current_user.email}"
+        )
+        
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create node error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create node: {str(e)}")
@@ -393,6 +433,15 @@ async def update_node(node_id: int, node: NodeUpdate, db: Session = Depends(get_
         result = NodeService.update_node(db, node_id, node)
         if not result:
             raise HTTPException(status_code=404, detail="Node not found")
+        
+        # Log node update
+        AuditService.log_node_action(
+            db, AuditAction.NODE_UPDATED,
+            result.id, result.name,
+            user=current_user,
+            description=f"Node '{result.name}' updated by {current_user.email}"
+        )
+        
         return result
     except HTTPException:
         raise
@@ -526,9 +575,22 @@ async def update_node_config(
         if not node:
             raise HTTPException(status_code=404, detail="Node not found")
         
+        # Get old config hash for audit
+        old_config = NodeConfigurationService.get_node_config(db, node_id)
+        old_hash = old_config.config_hash if old_config else None
+        
         # Update configuration
         updated_config = NodeConfigurationService.update_node_config(
             db, node_id, config_data.yaml_config
+        )
+        
+        # Log configuration update
+        AuditService.log_config_change(
+            db, node_id, node.name,
+            user=current_user,
+            old_hash=old_hash,
+            new_hash=updated_config.config_hash,
+            description=f"Configuration updated for node '{node.name}' by {current_user.email}"
         )
         
         return {
@@ -545,9 +607,24 @@ async def update_node_config(
 @app.delete("/nodes/{node_id}")
 async def delete_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        # Get node info before deletion for audit
+        node = NodeService.get_node(db, node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        node_name = node.name
         success = NodeService.delete_node(db, node_id)
         if not success:
             raise HTTPException(status_code=404, detail="Node not found")
+        
+        # Log node deletion
+        AuditService.log_node_action(
+            db, AuditAction.NODE_DELETED,
+            node_id, node_name,
+            user=current_user,
+            description=f"Node '{node_name}' deleted by {current_user.email}"
+        )
+        
         return {"message": "Node deleted successfully"}
     except HTTPException:
         raise
@@ -663,7 +740,19 @@ async def get_pools(db: Session = Depends(get_db), current_user = Depends(get_cu
 @app.post("/pools", response_model=PoolResponse)
 async def create_pool(pool: PoolCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
-        return PoolService.create_pool(db, pool)
+        result = PoolService.create_pool(db, pool)
+        
+        # Log pool creation
+        AuditService.log_pool_action(
+            db, AuditAction.POOL_CREATED,
+            result.id, result.name,
+            user=current_user,
+            description=f"Pool '{result.name}' created by {current_user.email}"
+        )
+        
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create pool error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create pool: {str(e)}")
@@ -687,6 +776,15 @@ async def update_pool(pool_id: int, pool: PoolUpdate, db: Session = Depends(get_
         result = PoolService.update_pool(db, pool_id, pool)
         if not result:
             raise HTTPException(status_code=404, detail="Pool not found")
+        
+        # Log pool update
+        AuditService.log_pool_action(
+            db, AuditAction.POOL_UPDATED,
+            result.id, result.name,
+            user=current_user,
+            description=f"Pool '{result.name}' updated by {current_user.email}"
+        )
+        
         return result
     except HTTPException:
         raise
@@ -697,9 +795,24 @@ async def update_pool(pool_id: int, pool: PoolUpdate, db: Session = Depends(get_
 @app.delete("/pools/{pool_id}")
 async def delete_pool(pool_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        # Get pool info before deletion for audit
+        pool = PoolService.get_pool(db, pool_id)
+        if not pool:
+            raise HTTPException(status_code=404, detail="Pool not found")
+        
+        pool_name = pool.name
         success = PoolService.delete_pool(db, pool_id)
         if not success:
             raise HTTPException(status_code=404, detail="Pool not found")
+        
+        # Log pool deletion
+        AuditService.log_pool_action(
+            db, AuditAction.POOL_DELETED,
+            pool_id, pool_name,
+            user=current_user,
+            description=f"Pool '{pool_name}' deleted by {current_user.email}"
+        )
+        
         return {"message": "Pool deleted successfully"}
     except HTTPException:
         raise
@@ -737,7 +850,19 @@ async def get_schedules(db: Session = Depends(get_db), current_user = Depends(ge
 @app.post("/schedules", response_model=ScheduleResponse)
 async def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
-        return ScheduleService.create_schedule(db, schedule)
+        result = ScheduleService.create_schedule(db, schedule)
+        
+        # Log schedule creation
+        AuditService.log_schedule_action(
+            db, AuditAction.SCHEDULE_CREATED,
+            result.id, result.name,
+            user=current_user,
+            description=f"Schedule '{result.name}' created by {current_user.email}"
+        )
+        
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create schedule error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create schedule: {str(e)}")
@@ -748,6 +873,15 @@ async def update_schedule(schedule_id: int, schedule: ScheduleCreate, db: Sessio
         result = ScheduleService.update_schedule(db, schedule_id, schedule)
         if not result:
             raise HTTPException(status_code=404, detail="Schedule not found")
+        
+        # Log schedule update
+        AuditService.log_schedule_action(
+            db, AuditAction.SCHEDULE_UPDATED,
+            result.id, result.name,
+            user=current_user,
+            description=f"Schedule '{result.name}' updated by {current_user.email}"
+        )
+        
         return result
     except HTTPException:
         raise
@@ -758,9 +892,24 @@ async def update_schedule(schedule_id: int, schedule: ScheduleCreate, db: Sessio
 @app.delete("/schedules/{schedule_id}")
 async def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
+        # Get schedule info before deletion for audit
+        existing = ScheduleService.get_schedule(db, schedule_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Schedule not found")
+        
+        schedule_name = existing.name
         success = ScheduleService.delete_schedule(db, schedule_id)
         if not success:
             raise HTTPException(status_code=404, detail="Schedule not found")
+        
+        # Log schedule deletion
+        AuditService.log_schedule_action(
+            db, AuditAction.SCHEDULE_DELETED,
+            schedule_id, schedule_name,
+            user=current_user,
+            description=f"Schedule '{schedule_name}' deleted by {current_user.email}"
+        )
+        
         return {"message": "Schedule deleted successfully"}
     except HTTPException:
         raise
@@ -793,12 +942,26 @@ async def update_user_role(user_id: int, role_update: UserUpdateRole, db: Sessio
                 detail="Access denied. Admin role required."
             )
         
+        # Get old role for audit
+        target_user = db.query(models.User).filter(models.User.id == user_id).first()
+        old_role = target_user.role.value if target_user and target_user.role else None
+        
         logger.info(f"Admin {current_user.email} updating user {user_id} role to {role_update.role}")
         
         try:
             updated_user = UserService.update_user_role(db, user_id, role_update.role)
             if not updated_user:
                 raise HTTPException(status_code=404, detail="User not found")
+            
+            # Log role change
+            AuditService.log_user_action(
+                db, AuditAction.USER_ROLE_CHANGED,
+                user_id, updated_user.email,
+                acting_user=current_user,
+                description=f"Admin {current_user.email} changed role for {updated_user.email} from {old_role} to {role_update.role}",
+                details={"old_role": old_role, "new_role": role_update.role}
+            )
+            
             logger.info(f"Successfully updated user {user_id} role to {role_update.role}")
             return updated_user
         except ValueError as e:
@@ -999,6 +1162,12 @@ async def get_audit_categories(
                 {"value": "NODE_CREATED", "label": "Node Created", "category": "NODE"},
                 {"value": "NODE_UPDATED", "label": "Node Updated", "category": "NODE"},
                 {"value": "NODE_DELETED", "label": "Node Deleted", "category": "NODE"},
+                {"value": "POOL_CREATED", "label": "Pool Created", "category": "POOL"},
+                {"value": "POOL_UPDATED", "label": "Pool Updated", "category": "POOL"},
+                {"value": "POOL_DELETED", "label": "Pool Deleted", "category": "POOL"},
+                {"value": "SCHEDULE_CREATED", "label": "Schedule Created", "category": "CONFIG"},
+                {"value": "SCHEDULE_UPDATED", "label": "Schedule Updated", "category": "CONFIG"},
+                {"value": "SCHEDULE_DELETED", "label": "Schedule Deleted", "category": "CONFIG"},
                 {"value": "CONFIG_UPDATED", "label": "Config Updated", "category": "CONFIG"},
                 {"value": "HEARTBEAT_RECEIVED", "label": "Heartbeat", "category": "SYSTEM"}
             ],

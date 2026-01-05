@@ -60,6 +60,11 @@ class AuditAction:
     POOL_UPDATED = "POOL_UPDATED"
     POOL_DELETED = "POOL_DELETED"
     
+    # Schedule actions
+    SCHEDULE_CREATED = "SCHEDULE_CREATED"
+    SCHEDULE_UPDATED = "SCHEDULE_UPDATED"
+    SCHEDULE_DELETED = "SCHEDULE_DELETED"
+    
     # System actions
     HEARTBEAT_RECEIVED = "HEARTBEAT_RECEIVED"
     SCALING_EVENT = "SCALING_EVENT"
@@ -263,6 +268,52 @@ class AuditService:
             resource_name=node_name,
             description=description or f"Configuration updated for node {node_name}",
             details={"old_hash": old_hash, "new_hash": new_hash}
+        )
+    
+    @staticmethod
+    def log_pool_action(
+        db: Session,
+        action: str,
+        pool_id: int,
+        pool_name: str,
+        user: Optional[User] = None,
+        description: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None
+    ) -> AuditLog:
+        """Log pool-related action"""
+        return AuditService.log(
+            db=db,
+            action=action,
+            category=AuditCategory.POOL,
+            user=user,
+            resource_type="pool",
+            resource_id=str(pool_id),
+            resource_name=pool_name,
+            description=description or f"{action} on pool {pool_name}",
+            details=details
+        )
+    
+    @staticmethod
+    def log_schedule_action(
+        db: Session,
+        action: str,
+        schedule_id: int,
+        schedule_name: str,
+        user: Optional[User] = None,
+        description: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None
+    ) -> AuditLog:
+        """Log schedule-related action"""
+        return AuditService.log(
+            db=db,
+            action=action,
+            category=AuditCategory.CONFIG,
+            user=user,
+            resource_type="schedule",
+            resource_id=str(schedule_id),
+            resource_name=schedule_name,
+            description=description or f"{action} on schedule {schedule_name}",
+            details=details
         )
     
     @staticmethod
