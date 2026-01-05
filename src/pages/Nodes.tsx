@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/Sidebar";
@@ -16,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parseUTCTimestamp, formatShortRelativeTime } from "@/lib/dateUtils";
 
 interface Node {
   id: number;
@@ -163,7 +163,7 @@ const Nodes = () => {
       return "inactive";
     }
     
-    const lastHeartbeat = new Date(node.last_heartbeat + 'Z'); // Ensure it's treated as UTC
+    const lastHeartbeat = parseUTCTimestamp(node.last_heartbeat);
     const now = new Date();
     const timeDiff = now.getTime() - lastHeartbeat.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
@@ -177,21 +177,7 @@ const Nodes = () => {
 
   const formatLastSeen = (lastHeartbeat?: string) => {
     if (!lastHeartbeat) return "Never";
-    
-    // Parse the UTC timestamp from the backend and convert to local time
-    const lastSeen = new Date(lastHeartbeat + 'Z'); // Ensure it's treated as UTC
-    const now = new Date();
-    const timeDiff = now.getTime() - lastSeen.getTime();
-    const minutesDiff = Math.floor(timeDiff / (1000 * 60));
-    
-    if (minutesDiff < 1) return "Just now";
-    if (minutesDiff < 60) return `${minutesDiff}m ago`;
-    
-    const hoursDiff = Math.floor(minutesDiff / 60);
-    if (hoursDiff < 24) return `${hoursDiff}h ago`;
-    
-    const daysDiff = Math.floor(hoursDiff / 24);
-    return `${daysDiff}d ago`;
+    return formatShortRelativeTime(lastHeartbeat);
   };
   
   return (

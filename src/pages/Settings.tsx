@@ -12,6 +12,7 @@ import { AlertCircle, Shield, User, Mail, Calendar, Key } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiClient } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -194,7 +195,7 @@ const Settings = () => {
                         <span className="text-sm text-muted-foreground">Member Since</span>
                       </div>
                       <span className="text-sm text-foreground">
-                        {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+                        {user?.created_at ? formatLocalDate(user.created_at) : 'Unknown'}
                       </span>
                     </div>
                   </CardContent>
