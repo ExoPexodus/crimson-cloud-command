@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column('new_status', sa.String(50), nullable=False),
         sa.Column('reason', sa.Text(), nullable=True),
         sa.Column('triggered_by', sa.String(100), nullable=True),  # heartbeat, manual, system
-        sa.Column('metadata', sa.Text(), nullable=True),  # JSON metadata
+        sa.Column('extra_data', sa.Text(), nullable=True),  # JSON metadata
         sa.Column('timestamp', sa.DateTime(), server_default=sa.func.now(), nullable=False),
     )
     
