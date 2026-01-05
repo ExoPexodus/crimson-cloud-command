@@ -622,30 +622,62 @@ class AnalyticsService:
     
     @staticmethod
     def process_pool_analytics(db: Session, node_id: int, pool_analytics_list: List[PoolAnalyticsData]):
+        logger = logging.getLogger(__name__)
+        
+        # Get node's configuration to sync scaling limits
+        node_config = NodeConfigurationService.get_node_config(db, node_id)
+        config_pools = {}
+        if node_config and node_config.yaml_config:
+            try:
+                config_data = yaml.safe_load(node_config.yaml_config)
+                for pool_cfg in config_data.get('pools', []):
+                    pool_id = pool_cfg.get('instance_pool_id')
+                    if pool_id:
+                        config_pools[pool_id] = pool_cfg.get('scaling_limits', {})
+            except Exception as e:
+                logger.warning(f"Failed to parse YAML config for scaling limits sync: {e}")
+        
         for pool_data in pool_analytics_list:
             # First, ensure the pool exists in the database
             pool = db.query(Pool).filter(Pool.oracle_pool_id == pool_data.oracle_pool_id).first()
+            node = db.query(Node).filter(Node.id == node_id).first()
+            
+            # Get scaling limits from YAML config
+            scaling_limits = config_pools.get(pool_data.oracle_pool_id, {})
+            config_min = scaling_limits.get('min', 1)
+            config_max = scaling_limits.get('max', pool_data.current_instances)
             
             if not pool:
                 # Create the pool if it doesn't exist
-                node = db.query(Node).filter(Node.id == node_id).first()
                 pool = Pool(
                     node_id=node_id,
                     oracle_pool_id=pool_data.oracle_pool_id,
-                    name=f"Pool-{pool_data.oracle_pool_id[-8:]}",  # Use last 8 chars of Oracle pool ID
+                    name=node.name if node else f"Pool-{pool_data.oracle_pool_id[-8:]}",  # Use node name
                     region=node.region if node else "unknown",
-                    min_instances=1,
-                    max_instances=pool_data.current_instances,
+                    min_instances=config_min,
+                    max_instances=config_max,
                     current_instances=pool_data.current_instances,
                     status=PoolStatus.HEALTHY
                 )
                 db.add(pool)
                 db.flush()  # Flush to get the ID
+                logger.info(f"Created pool '{pool.name}' with min={config_min}, max={config_max}")
+            else:
+                # Sync pool name with node name
+                if node and pool.name != node.name:
+                    pool.name = node.name
+                
+                # Sync scaling limits from YAML config
+                if pool.min_instances != config_min:
+                    pool.min_instances = config_min
+                if pool.max_instances != config_max:
+                    pool.max_instances = config_max
             
             # Update pool's current instances if it has changed
             if pool.current_instances != pool_data.current_instances:
                 pool.current_instances = pool_data.current_instances
-                db.add(pool)
+            
+            db.add(pool)
             
             # Now create the analytics record with the correct pool_id
             analytics = PoolAnalytics(
