@@ -11,10 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
 import { NodeConfigDialog } from "@/components/dashboard/NodeConfigDialog";
+import { NodeLifecycleLogs } from "@/components/dashboard/NodeLifecycleLogs";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Node {
   id: number;
@@ -514,6 +516,15 @@ const Nodes = () => {
                       </Card>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Lifecycle Audit Logs Section */}
+              {!loading && nodes.length > 0 && (
+                <div className="mt-8">
+                  <NodeLifecycleLogs 
+                    nodes={nodes.map(n => ({ id: n.id, name: n.name }))} 
+                  />
                 </div>
               )}
             </div>
