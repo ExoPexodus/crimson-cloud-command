@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Shield, User, ArrowLeft, UserPlus } from 'lucide-react';
+import { Users, Shield, User, ArrowLeft, UserPlus, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUser, setUpdatingUser] = useState<number | null>(null);
+  const [resettingUser, setResettingUser] = useState<number | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
 
@@ -123,6 +124,34 @@ export default function UsersPage() {
       });
     } finally {
       setUpdatingUser(null);
+    }
+  };
+
+  const resetRoleOverride = async (userId: number) => {
+    setResettingUser(userId);
+    try {
+      console.log(`[Users] Resetting role override for user ${userId}`);
+      const result = await apiClient.resetRoleOverride(userId);
+      console.log('[Users] Reset role override result:', result);
+      
+      if (result.data) {
+        setUsers(users.map(user => 
+          user.id === userId ? { ...user, role_override: false } : user
+        ));
+        toast({
+          title: "Success",
+          description: "Role override reset. Keycloak role will sync on next login.",
+        });
+      }
+    } catch (error: any) {
+      console.error('[Users] Failed to reset role override:', error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || "Failed to reset role override",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingUser(null);
     }
   };
 
@@ -365,9 +394,22 @@ export default function UsersPage() {
                     )}
                     
                     {user.auth_provider === 'keycloak' && user.role_override && (
-                      <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">
-                        Role Overridden
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">
+                          Role Overridden
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resetRoleOverride(user.id)}
+                          disabled={resettingUser === user.id}
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          title="Reset to Keycloak Role"
+                        >
+                          <RotateCcw className={`h-3 w-3 mr-1 ${resettingUser === user.id ? 'animate-spin' : ''}`} />
+                          Reset
+                        </Button>
+                      </div>
                     )}
                     
                     {user.auth_provider === 'keycloak' && !user.role_override && (

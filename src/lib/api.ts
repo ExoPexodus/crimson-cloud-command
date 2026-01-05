@@ -254,6 +254,12 @@ class ApiClient {
     });
   }
 
+  async resetRoleOverride(userId: number): Promise<ApiResponse<any>> {
+    return this.request(`/admin/users/${userId}/reset-role-override`, {
+      method: 'POST',
+    });
+  }
+
   async getUserDetails(userId: number): Promise<ApiResponse<any>> {
     return this.request(`/admin/users/${userId}`);
   }

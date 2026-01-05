@@ -1014,6 +1014,49 @@ async def update_user_role(user_id: int, role_update: UserUpdateRole, db: Sessio
         logger.error(f"Update user role error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update user role: {str(e)}")
 
+@app.post("/admin/users/{user_id}/reset-role-override", response_model=UserResponse)
+async def reset_role_override(user_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Reset role_override flag for Keycloak users so their role syncs from Keycloak on next login (admin only)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Admin role required."
+            )
+        
+        target_user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if target_user.auth_provider != models.AuthProvider.KEYCLOAK:
+            raise HTTPException(status_code=400, detail="Can only reset role override for Keycloak users")
+        
+        if not target_user.role_override:
+            raise HTTPException(status_code=400, detail="User role is not overridden")
+        
+        logger.info(f"Admin {current_user.email} resetting role override for user {target_user.email}")
+        
+        target_user.role_override = False
+        db.commit()
+        db.refresh(target_user)
+        
+        # Log the action
+        AuditService.log_user_action(
+            db, AuditAction.USER_ROLE_CHANGED,
+            user_id, target_user.email,
+            acting_user=current_user,
+            description=f"Admin {current_user.email} reset role override for {target_user.email} - role will sync from Keycloak on next login",
+            details={"action": "reset_role_override", "current_role": target_user.role.value}
+        )
+        
+        return target_user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset role override error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset role override: {str(e)}")
+
 @app.get("/admin/users/{user_id}", response_model=UserResponse)
 async def get_user_details(user_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get detailed user information (admin only)"""
