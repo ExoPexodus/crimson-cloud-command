@@ -160,7 +160,7 @@ class NodeLifecycleLog(Base):
     new_status = Column(String(50), nullable=False)
     reason = Column(Text, nullable=True)
     triggered_by = Column(String(100), nullable=True)  # heartbeat, manual, system
-    metadata = Column(Text, nullable=True)  # JSON metadata
+    extra_data = Column(Text, nullable=True)  # JSON metadata (renamed from 'metadata' which is reserved)
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

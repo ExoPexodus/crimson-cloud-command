@@ -18,7 +18,7 @@ interface LifecycleLog {
   new_status: string;
   reason: string | null;
   triggered_by: string | null;
-  metadata: string | null;
+  extra_data: string | null;
   timestamp: string;
 }
 
