@@ -18,13 +18,14 @@ from schemas import (
     ScheduleCreate, ScheduleResponse,
     UserCreate, UserResponse, UserListResponse, UserUpdateRole, UserProfileUpdate,
     Token, AuthResponse, KeycloakLoginRequest, NodeHeartbeatData, HeartbeatResponse,
-    SystemAnalyticsResponse, PoolAnalyticsResponse,
+    SystemAnalyticsResponse, PoolAnalyticsResponse, NodeLifecycleLogResponse,
     NodeRegister, NodeRegisterResponse, UserRole
 )
 from services import (
     NodeService, PoolService, MetricService, 
     ScheduleService, UserService, AuthService,
-    NodeConfigurationService, HeartbeatService, AnalyticsService
+    NodeConfigurationService, HeartbeatService, AnalyticsService,
+    NodeLifecycleService
 )
 from auth_middleware import get_node_from_api_key
 from role_service import RoleService, require_admin, require_devops, require_user
@@ -804,6 +805,58 @@ async def get_user_details(user_id: int, db: Session = Depends(get_db), current_
     except Exception as e:
         logger.error(f"Get user details error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get user details: {str(e)}")
+
+
+# Node Lifecycle Audit Log endpoints
+@app.get("/nodes/lifecycle-logs", response_model=List[NodeLifecycleLogResponse])
+async def get_lifecycle_logs(
+    node_id: Optional[int] = None,
+    event_type: Optional[str] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get node lifecycle audit logs (online/offline transitions)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        return NodeLifecycleService.get_logs(db, node_id=node_id, event_type=event_type, limit=limit)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get lifecycle logs error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get lifecycle logs: {str(e)}")
+
+
+@app.get("/nodes/{node_id}/lifecycle-logs", response_model=List[NodeLifecycleLogResponse])
+async def get_node_lifecycle_logs(
+    node_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get lifecycle logs for a specific node"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        
+        node = NodeService.get_node(db, node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        return NodeLifecycleService.get_logs(db, node_id=node_id, limit=limit)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get node lifecycle logs error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get node lifecycle logs: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

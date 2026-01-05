@@ -148,6 +148,24 @@ class NodeHeartbeat(Base):
     # Relationships
     node = relationship("Node", back_populates="heartbeats")
 
+
+class NodeLifecycleLog(Base):
+    """Audit log for tracking node lifecycle events (online/offline transitions)"""
+    __tablename__ = "node_lifecycle_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    event_type = Column(String(50), nullable=False)  # WENT_OFFLINE, CAME_ONLINE
+    previous_status = Column(String(50), nullable=True)
+    new_status = Column(String(50), nullable=False)
+    reason = Column(Text, nullable=True)
+    triggered_by = Column(String(100), nullable=True)  # heartbeat, manual, system
+    metadata = Column(Text, nullable=True)  # JSON metadata
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    node = relationship("Node")
+
 class PoolAnalytics(Base):
     __tablename__ = "pool_analytics"
     
