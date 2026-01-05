@@ -111,14 +111,24 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class AuditLog(Base):
+    """Enterprise audit log for tracking all user and system actions"""
     __tablename__ = "audit_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    action = Column(String(255), nullable=False)
-    resource_type = Column(String(100), nullable=False)
-    resource_id = Column(Integer, nullable=True)
-    details = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_email = Column(String(255), nullable=True)
+    user_role = Column(String(50), nullable=True)
+    action = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)  # AUTH, NODE, POOL, USER, CONFIG, SYSTEM
+    resource_type = Column(String(100), nullable=True)
+    resource_id = Column(String(255), nullable=True)
+    resource_name = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    details = Column(Text, nullable=True)  # JSON data
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    status = Column(String(20), default="SUCCESS")  # SUCCESS, FAILURE
+    error_message = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 class NodeConfiguration(Base):

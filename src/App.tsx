@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Nodes from "./pages/Nodes";
 import Settings from "./pages/Settings";
 import UsersPage from "./pages/admin/Users";
+import AuditLogsPage from "./pages/admin/AuditLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,9 @@ function AuthenticatedApp() {
         } />
         <Route path="/admin/users" element={
           hasRole('ADMIN') ? <UsersPage /> : <NotFound />
+        } />
+        <Route path="/admin/audit-logs" element={
+          hasRole('ADMIN') ? <AuditLogsPage /> : <NotFound />
         } />
         <Route path="*" element={<NotFound />} />
       </Routes>
