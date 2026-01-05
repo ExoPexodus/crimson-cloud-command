@@ -39,6 +39,7 @@ import { apiClient } from "@/lib/api";
 import type { AuditLog, AuditLogSummary, AuditLogFilters } from "@/lib/api";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { formatLocalDateTime, formatFullLocalDateTime } from "@/lib/dateUtils";
 
 type DateRange = {
   from: Date | undefined;
@@ -225,21 +226,9 @@ const AuditLogsPage = () => {
     );
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return format(new Date(timestamp), "MMM dd, HH:mm:ss");
-    } catch {
-      return timestamp;
-    }
-  };
+  const formatTimestamp = (timestamp: string) => formatLocalDateTime(timestamp);
 
-  const formatFullTimestamp = (timestamp: string) => {
-    try {
-      return format(new Date(timestamp), "PPpp");
-    } catch {
-      return timestamp;
-    }
-  };
+  const formatFullTimestamp = (timestamp: string) => formatFullLocalDateTime(timestamp);
 
   const hasActiveFilters = filters.category || filters.action || filters.status || filters.search || dateRange.from;
 

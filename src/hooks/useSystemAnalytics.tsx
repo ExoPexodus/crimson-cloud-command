@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { formatLocalTime } from "@/lib/dateUtils";
 
 interface SystemAnalytics {
   total_active_pools: number;
@@ -59,9 +59,7 @@ export function useSystemAnalytics() {
     }, 1500);
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString();
-  };
+  const formatTime = (dateString: string) => formatLocalTime(dateString);
 
   return {
     analytics,

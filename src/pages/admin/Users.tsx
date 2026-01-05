@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { formatLocalDate } from '@/lib/dateUtils';
 
 interface User {
   id: number;
@@ -340,7 +341,7 @@ export default function UsersPage() {
                     </div>
                     <p className="text-sm text-gray-600">{user.email}</p>
                     <p className="text-xs text-gray-400">
-                      Created: {new Date(user.created_at).toLocaleDateString()}
+                      Created: {formatLocalDate(user.created_at)}
                     </p>
                   </div>
                   

@@ -1,6 +1,6 @@
-
 import { Card } from "@/components/ui/card";
 import { Server, Activity, AlertCircle } from "lucide-react";
+import { parseUTCTimestamp } from "@/lib/dateUtils";
 
 interface SystemAnalytics {
   total_active_pools: number;
@@ -22,7 +22,7 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
   // Check if data is stale (more than 10 minutes old)
   const isDataStale = () => {
     if (!analytics?.last_updated) return false;
-    const lastUpdated = new Date(analytics.last_updated);
+    const lastUpdated = parseUTCTimestamp(analytics.last_updated);
     const now = new Date();
     const minutesDiff = (now.getTime() - lastUpdated.getTime()) / (1000 * 60);
     return minutesDiff > 10;
@@ -38,7 +38,7 @@ export function SystemMetricsCards({ analytics, loading }: SystemMetricsCardsPro
 
   const formatLastUpdated = () => {
     if (!analytics?.last_updated) return "";
-    const lastUpdated = new Date(analytics.last_updated);
+    const lastUpdated = parseUTCTimestamp(analytics.last_updated);
     const now = new Date();
     const minutesDiff = Math.round((now.getTime() - lastUpdated.getTime()) / (1000 * 60));
     

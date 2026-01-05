@@ -1,8 +1,8 @@
-
 import { MetricsChart } from "@/components/dashboard/MetricsChart";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
+import { parseUTCTimestamp } from "@/lib/dateUtils";
 
 interface PoolAnalytics {
   id: number;
@@ -44,17 +44,18 @@ export function MetricsChartsSection() {
       if (poolResponse.data) {
         // Filter data by date range
         const filteredData = poolResponse.data.filter((item: PoolAnalytics) => {
-          const itemDate = new Date(item.timestamp);
+          const itemDate = parseUTCTimestamp(item.timestamp);
           return itemDate >= dateRange.from && itemDate <= dateRange.to;
         });
 
         const hoursDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60));
 
         // Group data by appropriate time intervals based on range
+        // Parse as UTC and display in local timezone
         const getTimeKey = (timestamp: string) => {
-          const date = new Date(timestamp);
+          const date = parseUTCTimestamp(timestamp);
           if (hoursDiff <= 24) {
-            // Hourly for 24h or less
+            // Hourly for 24h or less - show in local time
             return `${date.getHours().toString().padStart(2, '0')}:00`;
           } else if (hoursDiff <= 168) {
             // Daily for up to 7 days
