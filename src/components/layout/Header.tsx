@@ -1,7 +1,6 @@
 
-import { Bell, Search, User, LogOut, Settings } from "lucide-react";
+import { Bell, User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -31,16 +30,6 @@ export function Header() {
       <div className="flex items-center gap-2">
         <SidebarTrigger className="border-0 bg-transparent hover:bg-dark-bg-light text-foreground" />
         <h1 className="font-semibold text-lg md:text-xl hidden md:block">Oracle Cloud Instance Manager</h1>
-      </div>
-      
-      <div className="flex-1 max-w-md mx-4 hidden md:block">
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search instances, containers..." 
-            className="bg-dark-bg/60 pl-8 border-dark-bg-light/40 focus-visible:ring-dark-blue-500 hover:border-dark-blue-800/50"
-          />
-        </div>
       </div>
       
       <div className="flex items-center gap-3">

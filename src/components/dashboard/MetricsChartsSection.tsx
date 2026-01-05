@@ -38,8 +38,11 @@ export function MetricsChartsSection() {
     try {
       setLoading(true);
       
-      // Get pool analytics data
-      const poolResponse = await apiClient.getPoolAnalytics();
+      // Calculate hours from date range to pass to API
+      const hours = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60));
+      
+      // Get pool analytics data with calculated hours
+      const poolResponse = await apiClient.getPoolAnalytics(undefined, hours);
       
       if (poolResponse.data) {
         // Filter data by date range
