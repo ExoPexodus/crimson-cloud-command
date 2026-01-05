@@ -7,6 +7,7 @@ interface MetricsChartProps {
   valuePrefix?: string;
   valueSuffix?: string;
   color?: string;
+  dateRangeLabel?: string;
 }
 
 export function MetricsChart({ 
@@ -14,13 +15,14 @@ export function MetricsChart({
   title,
   valuePrefix = "",
   valueSuffix = "",
-  color = "#20B2AA"  
+  color = "#20B2AA",
+  dateRangeLabel = "Last 24 hours"
 }: MetricsChartProps) {
   return (
     <div className="p-4 rounded-lg glass-card h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium text-sm">{title}</h3>
-        <span className="text-xs text-muted-foreground">Last 24 hours</span>
+        <span className="text-xs text-muted-foreground">{dateRangeLabel}</span>
       </div>
       
       <div className="flex-1 min-h-[150px]">
