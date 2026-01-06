@@ -67,39 +67,38 @@ class DashboardAnalyticsCalculator:
     def get_peak_instances_24h(db: Session) -> int:
         """
         Maximum total instances running simultaneously across all pools in the last 24 hours.
-        Groups by 5-minute intervals and sums current_instances across all pools.
-        Returns the highest sum found.
+        
+        Uses hourly buckets to handle asynchronous pool reporting, and ensures peak is 
+        always >= current running instances.
         """
         try:
             twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
             
-            # For each distinct timestamp (or 5-min interval), get the sum of current_instances
-            # We'll use subquery to get latest record per pool per 5-min interval
-            subquery = db.query(
-                func.date_trunc('minute', PoolAnalytics.timestamp).label('interval'),
+            # 1. Get current running instances (ensures peak >= current)
+            current_total = DashboardAnalyticsCalculator.get_current_running_instances(db)
+            
+            # 2. For historical data, use hourly buckets and get max per pool per hour
+            hourly_subq = db.query(
+                func.date_trunc('hour', PoolAnalytics.timestamp).label('hour'),
                 PoolAnalytics.pool_id,
                 func.max(PoolAnalytics.current_instances).label('max_instances')
             ).filter(
                 PoolAnalytics.timestamp >= twenty_four_hours_ago
             ).group_by(
-                func.date_trunc('minute', PoolAnalytics.timestamp),
+                func.date_trunc('hour', PoolAnalytics.timestamp),
                 PoolAnalytics.pool_id
             ).subquery()
             
-            # Sum instances across all pools per interval
-            interval_sums = db.query(
-                subquery.c.interval,
-                func.sum(subquery.c.max_instances).label('total_instances')
-            ).group_by(
-                subquery.c.interval
-            ).all()
+            # Sum all pools' max instances per hour
+            hour_totals = db.query(
+                hourly_subq.c.hour,
+                func.sum(hourly_subq.c.max_instances).label('total')
+            ).group_by(hourly_subq.c.hour).all()
             
-            if not interval_sums:
-                return 0
+            historical_peak = max((int(h.total) for h in hour_totals), default=0)
             
-            # Return the maximum total from any interval
-            peak = max([row.total_instances for row in interval_sums])
-            return int(peak) if peak else 0
+            # Peak is the maximum of current and historical
+            return max(current_total, historical_peak)
         except Exception as e:
             logger.error(f"Error calculating peak instances (24h): {str(e)}")
             return 0
