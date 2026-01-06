@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InstancePoolCardProps {
   name: string;
@@ -34,6 +35,8 @@ export function InstancePoolCard({
   onRefresh,
   onConfigure
 }: InstancePoolCardProps) {
+  const { user } = useAuth();
+  const canManage = user?.role === 'ADMIN' || user?.role === 'DEVOPS';
   const getStatusBorderColor = () => {
     switch (status) {
       case "healthy":
@@ -164,7 +167,7 @@ export function InstancePoolCard({
             <RefreshCw size={12} className="mr-1" />
             Refresh
           </Button>
-          {onConfigure && (
+          {canManage && onConfigure && (
             <Button
               variant="ghost"
               size="sm"
@@ -175,7 +178,7 @@ export function InstancePoolCard({
               Configure
             </Button>
           )}
-          {nodeId && (
+          {canManage && nodeId && (
             <Button
               variant="ghost"
               size="sm"
