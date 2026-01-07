@@ -645,3 +645,68 @@ def send_heartbeat(self, status, pool_analytics, config_hash):
         logging.error(f"Heartbeat failed: {e}")
         return None
 ```
+
+---
+
+## 9. Dashboard Analytics Calculation
+
+The backend includes a dedicated `DashboardAnalyticsCalculator` module that calculates real-time dashboard metrics with high accuracy.
+
+### 9.1 Peak Instances (24h) Algorithm
+
+The peak instances calculation uses an hourly-bucketed approach to handle asynchronous pool reporting:
+
+```python
+def get_peak_instances_24h(db: Session) -> int:
+    """
+    Maximum total instances running simultaneously across all pools in the last 24 hours.
+    
+    Algorithm:
+    1. Get current running instances (ensures peak >= current)
+    2. Group historical analytics into hourly buckets
+    3. Within each hour, find max(current_instances) for each pool
+    4. Sum all pools' max instances per hour
+    5. Return max(current_total, historical_peak)
+    """
+    
+    # Step 1: Get current running instances
+    current_total = get_current_running_instances(db)
+    
+    # Step 2-4: Hourly bucketed calculation
+    hourly_subq = db.query(
+        func.date_trunc('hour', PoolAnalytics.timestamp).label('hour'),
+        PoolAnalytics.pool_id,
+        func.max(PoolAnalytics.current_instances).label('max_instances')
+    ).filter(
+        PoolAnalytics.timestamp >= twenty_four_hours_ago
+    ).group_by(
+        func.date_trunc('hour', PoolAnalytics.timestamp),
+        PoolAnalytics.pool_id
+    ).subquery()
+    
+    # Sum per hour
+    hour_totals = db.query(
+        hourly_subq.c.hour,
+        func.sum(hourly_subq.c.max_instances).label('total')
+    ).group_by(hourly_subq.c.hour).all()
+    
+    historical_peak = max((int(h.total) for h in hour_totals), default=0)
+    
+    # Step 5: Return maximum
+    return max(current_total, historical_peak)
+```
+
+**Why hourly buckets?**
+- Pools report analytics asynchronously at different times
+- Grouping by exact minute would undercount simultaneous instances
+- Hourly buckets ensure we capture the true peak within each time window
+
+### 9.2 Other Dashboard Metrics
+
+| Metric | Calculation Method |
+|--------|-------------------|
+| **Active Pools (24h)** | Count distinct pools with `is_active=True` analytics in last 24h |
+| **Max Pools Today** | Highest count of distinct active pools in any hourly window since midnight |
+| **Current Instances** | Sum of latest `current_instances` from each pool (fallback: 5→15→30 min windows) |
+| **Active Nodes** | Count nodes with heartbeat in last 10 minutes and status=ACTIVE |
+| **Avg CPU/Memory** | Average of latest analytics records from active nodes |

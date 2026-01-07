@@ -73,6 +73,12 @@
 
 ## 3. Dashboard Page
 
+The dashboard displays system analytics and instance pools with role-based action visibility.
+
+### Role-Based Access Control (RBAC)
+- **USER role**: Can view metrics and pool status, but cannot see Configure/View buttons
+- **DEVOPS/ADMIN roles**: Full access to all buttons including Configure and View Metrics
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ SIDEBAR │                     DASHBOARD                                      │
@@ -83,7 +89,7 @@
 │ Nodes   │                                                                    │
 │ ────    │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐  │
 │ Settings│  │ Active Nodes│ │ Active Pools│ │ Instances   │ │ Peak 24h    │  │
-│ ────    │  │             │ │             │ │             │ │             │  │
+│ ────    │  │             │ │             │ │             │ │ (≥ current) │  │
 │         │  │     3       │ │     5       │ │     23      │ │     35      │  │
 │ Admin   │  │   ● Online  │ │   Healthy   │ │   Running   │ │   Maximum   │  │
 │ ────    │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘  │
@@ -94,25 +100,38 @@
 │         │  ┌─────────────────────────────────────────────────────────────┐  │
 │         │  │  🖥️ autoscaler-us-east    ● ACTIVE    Last: 2 min ago      │  │
 │         │  │  ├─ web-servers           3/10 instances   CPU: 45%        │  │
-│         │  │  │  └─ Status: healthy    [Configure] [View Metrics]       │  │
+│         │  │  │  └─ Status: healthy    [Configure]* [View Metrics]*     │  │
 │         │  │  └─ api-servers           5/8 instances    CPU: 62%        │  │
-│         │  │     └─ Status: healthy    [Configure] [View Metrics]       │  │
+│         │  │     └─ Status: healthy    [Configure]* [View Metrics]*     │  │
 │         │  └─────────────────────────────────────────────────────────────┘  │
+│         │                                                                    │
+│         │  * Configure/View buttons only visible to DEVOPS and ADMIN roles  │
 │         │                                                                    │
 │         │  ┌─────────────────────────────────────────────────────────────┐  │
 │         │  │  🖥️ autoscaler-eu-west    ● ACTIVE    Last: 1 min ago      │  │
 │         │  │  └─ backend-services      8/15 instances   CPU: 78%        │  │
-│         │  │     └─ Status: warning    [Configure] [View Metrics]       │  │
+│         │  │     └─ Status: warning    [Configure]* [View Metrics]*     │  │
 │         │  └─────────────────────────────────────────────────────────────┘  │
 │         │                                                                    │
 │         │  ┌─────────────────────────────────────────────────────────────┐  │
 │         │  │  🖥️ autoscaler-ap-tokyo   ○ INACTIVE  Last: 15 min ago     │  │
 │         │  │     No pools configured                                     │  │
-│         │  │     [Configure Node]                                        │  │
+│         │  │     [Configure Node]*                                       │  │
 │         │  └─────────────────────────────────────────────────────────────┘  │
 │         │                                                                    │
 └─────────┴───────────────────────────────────────────────────────────────────┘
 ```
+
+### Peak Instances (24h) Calculation
+
+The "Peak 24h" metric uses an hourly-bucketed algorithm that ensures accuracy even when pools report at different times:
+
+1. **Current Total**: Calculate current running instances across all active pools
+2. **Hourly Buckets**: Group historical analytics into hourly windows
+3. **Per-Pool Max**: Within each hour, find the maximum instances for each pool
+4. **Sum Per Hour**: Sum all pools' max instances within each hour to get hourly totals
+5. **Historical Peak**: Find the maximum hourly total from the last 24 hours
+6. **Final Result**: Return `max(current_total, historical_peak)` to ensure peak ≥ current
 
 ---
 

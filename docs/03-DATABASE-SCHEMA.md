@@ -114,6 +114,7 @@ CREATE TABLE users (
     role            user_role DEFAULT 'USER',
     auth_provider   auth_provider DEFAULT 'local',
     keycloak_user_id VARCHAR(255) UNIQUE,
+    role_override   BOOLEAN DEFAULT FALSE,  -- When TRUE, ignores Keycloak role mapping
     is_active       BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMP DEFAULT NOW()
 );
@@ -132,6 +133,7 @@ CREATE TYPE auth_provider AS ENUM ('local', 'keycloak');
 | `role` | ENUM | USER, DEVOPS, or ADMIN |
 | `auth_provider` | ENUM | local or keycloak |
 | `keycloak_user_id` | VARCHAR(255) | Keycloak subject ID |
+| `role_override` | BOOLEAN | When TRUE, admin-assigned role persists instead of Keycloak mapping |
 | `is_active` | BOOLEAN | Account active status |
 | `created_at` | TIMESTAMP | Account creation time |
 
