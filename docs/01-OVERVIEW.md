@@ -92,17 +92,24 @@ The Oracle Cloud Autoscaling Management System is a distributed infrastructure m
 
 | Role | Permissions |
 |------|-------------|
-| **USER** | View-only access to dashboards and metrics |
+| **USER** | View-only access to dashboards and metrics (no Configure/View buttons on pool cards) |
 | **DEVOPS** | Full access to nodes, pools, configurations, and schedules |
-| **ADMIN** | All DEVOPS permissions + user management + audit log access |
+| **ADMIN** | All DEVOPS permissions + user management + audit log access + role override for Keycloak users |
+
+### Role Management Features
+
+- **Keycloak Role Mapping**: SSO users are automatically assigned roles based on Keycloak group memberships
+- **Role Override**: Administrators can manually override roles for Keycloak users when SSO mappings are insufficient
+- **Role Reset**: Overridden roles can be reset to allow Keycloak mappings to take precedence again
 
 ---
 
 ## 5. Key Features
 
 ### Monitoring & Observability
-- Real-time instance pool status dashboard
+- Real-time instance pool status dashboard with role-based action visibility
 - CPU and memory utilization tracking
+- Peak instances calculation using hourly-bucketed algorithm (always >= current running)
 - Node health status with heartbeat detection
 - Node lifecycle logging (online/offline transitions)
 
