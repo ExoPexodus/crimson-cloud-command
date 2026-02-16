@@ -1,11 +1,8 @@
 import oci
 import logging
-import time
-import os
 from oci.core import ComputeManagementClient
 from instance_manager.instance_pool import get_instance_pool_details, get_instances_from_instance_pool
 from user_config.config_manager import build_oci_config  # Ensure to use this
-from alerts.webhook import send_terminating_instances_webhook
 
 def initialize_oci_client(config):
     return ComputeManagementClient(config)
@@ -95,37 +92,6 @@ def scale_down(compute_management_client, instance_pool_id, compartment_id, min_
         )
 
         logging.info(f"Scaled down: Target instance count updated to {new_size}")
-        
-        # Retry mechanism to check for terminating instances (3 attempts, 30 seconds apart)
-        webhook_url = os.getenv("WEBHOOK_URL")
-        project_name = os.getenv("PROJECT_NAME")
-        
-        if webhook_url:
-            max_retries = 3
-            retry_interval = 30
-            terminating_found = False
-            
-            for attempt in range(1, max_retries + 1):
-                logging.info(f"Checking for terminating instances (attempt {attempt}/{max_retries})...")
-                instances = get_instances_from_instance_pool(compute_management_client, instance_pool_id, compartment_id)
-                
-                # Check if any instances are terminating
-                terminating_instances = [i for i in instances if i.state in ["Terminating", "Terminated"]]
-                
-                if terminating_instances:
-                    logging.info(f"Found {len(terminating_instances)} terminating instance(s), sending webhook...")
-                    send_terminating_instances_webhook(instances, webhook_url, reason, project_name)
-                    terminating_found = True
-                    break
-                else:
-                    if attempt < max_retries:
-                        logging.info(f"No terminating instances found yet, waiting {retry_interval} seconds before retry...")
-                        time.sleep(retry_interval)
-            
-            if not terminating_found:
-                logging.warning(f"No terminating instances detected after {max_retries} attempts")
-        else:
-            logging.warning("WEBHOOK_URL not configured, skipping termination alert")
 
         return {
             'action': 'SCALE_DOWN',

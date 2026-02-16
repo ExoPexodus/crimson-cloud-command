@@ -11,6 +11,7 @@ import Nodes from "./pages/Nodes";
 import Settings from "./pages/Settings";
 import UsersPage from "./pages/admin/Users";
 import AuditLogsPage from "./pages/admin/AuditLogs";
+import NodeDetails from "./pages/NodeDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,9 @@ function AuthenticatedApp() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/nodes" element={
           hasRole('DEVOPS') ? <Nodes /> : <NotFound />
+        } />
+        <Route path="/nodes/:nodeId" element={
+          hasRole('DEVOPS') ? <NodeDetails /> : <NotFound />
         } />
         <Route path="/admin/users" element={
           hasRole('ADMIN') ? <UsersPage /> : <NotFound />

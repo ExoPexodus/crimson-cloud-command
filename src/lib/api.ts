@@ -2,7 +2,7 @@
 // In production, use relative /api path (proxied by nginx)
 // In development, use direct backend URL
 const isDevelopment = import.meta.env.DEV;
-const API_BASE_URL = isDevelopment 
+const API_BASE_URL = isDevelopment
   ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
   : '/api';
 
@@ -39,6 +39,56 @@ interface PoolAnalytics {
   scaling_event: string | null;
   scaling_reason: string | null;
   node_name: string | null;
+}
+
+// Analytics chart data types
+interface InstanceTrendData {
+  timestamp: string;
+  total_instances: number;
+  active_pools: number;
+  avg_cpu: number;
+  avg_memory: number;
+}
+
+interface ScalingPatternData {
+  by_hour: Array<{
+    timestamp: string;
+    scale_up: number;
+    scale_down: number;
+    failed: number;
+  }>;
+  totals: {
+    scale_up: number;
+    scale_down: number;
+    failed: number;
+    other: number;
+  };
+  period_hours: number;
+}
+
+interface NodeHealthData {
+  node_id: number;
+  node_name: string;
+  current_status: string;
+  uptime_percent: number;
+  online_seconds: number;
+  offline_seconds: number;
+  periods: Array<{
+    status: string;
+    start: string;
+    end: string;
+  }>;
+  last_heartbeat: string | null;
+  period_hours: number;
+}
+
+interface NodeResourceData {
+  timestamp: string;
+  avg_cpu: number;
+  avg_memory: number;
+  max_cpu: number;
+  max_memory: number;
+  total_instances: number;
 }
 
 interface NodeRegisterRequest {
@@ -144,13 +194,13 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
     console.log(`🔑 Token available: ${this.token ? 'YES' : 'NO'}`);
     if (this.token) {
       console.log(`🔑 Token (first 20 chars): ${this.token.substring(0, 20)}...`);
     }
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -159,20 +209,20 @@ class ApiClient {
       },
       ...options,
     };
-    
+
     if (this.token) {
       console.log(`📤 Authorization header set: Bearer ${this.token.substring(0, 20)}...`);
     }
-    
+
     console.log(`📋 Request headers:`, config.headers);
     console.log(`📡 Making fetch request to: ${url}`);
 
     try {
       const response = await fetch(url, config);
-      
+
       console.log(`📨 Response status: ${response.status} ${response.statusText}`);
       console.log(`📨 Response headers:`, Object.fromEntries(response.headers.entries()));
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`❌ API Error ${response.status}:`, errorText);
@@ -193,18 +243,18 @@ class ApiClient {
     const formData = new FormData();
     formData.append('email', email);
     formData.append('password', password);
-    
+
     const result = await this.request<{ access_token: string; token_type: string; user: any }>('/auth/login', {
       method: 'POST',
       body: formData,
       headers: {}, // Remove Content-Type to let browser set it for FormData
     });
-    
+
     if (result.data) {
       this.token = result.data.access_token;
       localStorage.setItem('access_token', this.token);
     }
-    
+
     return result;
   }
 
@@ -213,12 +263,12 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
-    
+
     if (result.data) {
       this.token = result.data.access_token;
       localStorage.setItem('access_token', this.token);
     }
-    
+
     return result;
   }
 
@@ -323,7 +373,7 @@ class ApiClient {
     if (nodeId) params.append('node_id', nodeId.toString());
     if (eventType) params.append('event_type', eventType);
     params.append('limit', limit.toString());
-    
+
     return this.request(`/nodes/lifecycle-logs?${params.toString()}`);
   }
 
@@ -374,9 +424,31 @@ class ApiClient {
     const params = new URLSearchParams();
     if (nodeId) params.append('node_id', nodeId.toString());
     params.append('hours', hours.toString());
-    
+
     const endpoint = `/analytics/pools?${params.toString()}`;
     return this.request(endpoint);
+  }
+
+  async getInstanceTrends(hours: number = 24, interval: string = "hour"): Promise<ApiResponse<InstanceTrendData[]>> {
+    const params = new URLSearchParams();
+    params.append('hours', hours.toString());
+    params.append('interval', interval);
+    return this.request(`/analytics/instance-trends?${params.toString()}`);
+  }
+
+  async getScalingPatterns(hours: number = 24): Promise<ApiResponse<ScalingPatternData>> {
+    return this.request(`/analytics/scaling-patterns?hours=${hours}`);
+  }
+
+  async getNodeHealth(nodeId: number, hours: number = 24): Promise<ApiResponse<NodeHealthData>> {
+    return this.request(`/analytics/node/${nodeId}/health?hours=${hours}`);
+  }
+
+  async getNodeResources(nodeId: number, hours: number = 24, interval: string = "hour"): Promise<ApiResponse<NodeResourceData[]>> {
+    const params = new URLSearchParams();
+    params.append('hours', hours.toString());
+    params.append('interval', interval);
+    return this.request(`/analytics/node/${nodeId}/resources?${params.toString()}`);
   }
 
   // Health check
@@ -402,7 +474,7 @@ class ApiClient {
     if (filters.search) params.append('search', filters.search);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.offset) params.append('offset', filters.offset.toString());
-    
+
     return this.request(`/admin/audit-logs?${params.toString()}`);
   }
 

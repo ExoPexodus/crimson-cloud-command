@@ -274,3 +274,253 @@ class DashboardAnalyticsCalculator:
                 "active_nodes": 0,
                 "last_updated": datetime.utcnow()
             }
+
+    @staticmethod
+    def get_instance_trends(db: Session, hours: int = 24, interval: str = "hour") -> list:
+        """
+        Get instance count trends over time for the dashboard chart.
+        Returns time-series data with total instances and avg metrics.
+        
+        Fix applied: Now calculates average instances PER POOL per interval first, 
+        then sums those averages. This prevents over-counting when multiple logs 
+        exist for the same pool in the same interval.
+        """
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            
+            # Step 1: Calculate average metrics for each pool within each time interval
+            # This collapses the 60+ logs per hour into a single representative value per pool
+            subquery = db.query(
+                func.date_trunc(interval, PoolAnalytics.timestamp).label('interval_ts'),
+                PoolAnalytics.pool_id,
+                func.avg(PoolAnalytics.current_instances).label('avg_instances'),
+                func.avg(PoolAnalytics.avg_cpu_utilization).label('avg_cpu'),
+                func.avg(PoolAnalytics.avg_memory_utilization).label('avg_memory')
+            ).filter(
+                PoolAnalytics.timestamp >= cutoff
+            ).group_by(
+                func.date_trunc(interval, PoolAnalytics.timestamp),
+                PoolAnalytics.pool_id
+            ).subquery()
+
+            # Step 2: Sum the per-pool averages to get system-wide totals
+            query = db.query(
+                subquery.c.interval_ts.label('timestamp'),
+                func.sum(subquery.c.avg_instances).label('total_instances'),
+                func.count(distinct(subquery.c.pool_id)).label('active_pools'),
+                func.avg(subquery.c.avg_cpu).label('sys_avg_cpu'),
+                func.avg(subquery.c.avg_memory).label('sys_avg_memory')
+            ).group_by(
+                subquery.c.interval_ts
+            ).order_by(
+                subquery.c.interval_ts
+            ).all()
+            
+            return [
+                {
+                    "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+                    # Rounding to int makes sense for instances, but using round() helps with float sums
+                    "total_instances": int(round(row.total_instances or 0)),
+                    "active_pools": row.active_pools or 0,
+                    "avg_cpu": round(row.sys_avg_cpu or 0, 2),
+                    "avg_memory": round(row.sys_avg_memory or 0, 2)
+                }
+                for row in query
+            ]
+        except Exception as e:
+            logger.error(f"Error getting instance trends: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_scaling_patterns(db: Session, hours: int = 24) -> dict:
+        """
+        Get scaling event patterns grouped by hour and type.
+        Returns data for scaling patterns bar chart.
+        """
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            
+            # Query scaling events from PoolAnalytics grouped by hour and type
+            # We filter for rows where scaling_event is not null
+            query = db.query(
+                func.date_trunc('hour', PoolAnalytics.timestamp).label('timestamp'),
+                PoolAnalytics.scaling_event.label('event_type'),
+                func.count().label('count')
+            ).filter(
+                PoolAnalytics.timestamp >= cutoff,
+                PoolAnalytics.scaling_event.isnot(None)
+            ).group_by(
+                func.date_trunc('hour', PoolAnalytics.timestamp),
+                PoolAnalytics.scaling_event
+            ).all()
+            
+            # Organize by hour
+            hourly_data = {}
+            for row in query:
+                ts = row.timestamp.isoformat() if row.timestamp else None
+                if ts not in hourly_data:
+                    hourly_data[ts] = {"timestamp": ts, "scale_up": 0, "scale_down": 0, "failed": 0}
+                
+                event_type = (row.event_type or "").lower()
+                if "up" in event_type or "out" in event_type:
+                    hourly_data[ts]["scale_up"] += row.count
+                elif "down" in event_type or "in" in event_type:
+                    hourly_data[ts]["scale_down"] += row.count
+                elif "fail" in event_type or "error" in event_type:
+                    hourly_data[ts]["failed"] += row.count
+            
+            by_hour = sorted(hourly_data.values(), key=lambda x: x["timestamp"] or "")
+            
+            # Calculate totals
+            totals = {
+                "scale_up": sum(h["scale_up"] for h in by_hour),
+                "scale_down": sum(h["scale_down"] for h in by_hour),
+                "failed": sum(h["failed"] for h in by_hour),
+                "other": 0
+            }
+            
+            return {
+                "by_hour": by_hour,
+                "totals": totals,
+                "period_hours": hours
+            }
+        except Exception as e:
+            logger.error(f"Error getting scaling patterns: {str(e)}")
+            return {"by_hour": [], "totals": {"scale_up": 0, "scale_down": 0, "failed": 0, "other": 0}, "period_hours": hours}
+
+    @staticmethod
+    def get_node_health_timeline(db: Session, node_id: int, hours: int = 24) -> dict:
+        """
+        Get node health timeline showing online/offline periods.
+        """
+        try:
+            from models import NodeLifecycleLog
+            
+            node = db.query(Node).filter(Node.id == node_id).first()
+            if not node:
+                return {"error": "Node not found"}
+            
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            
+            # Get lifecycle logs for this node within the window
+            logs = db.query(NodeLifecycleLog).filter(
+                NodeLifecycleLog.node_id == node_id,
+                NodeLifecycleLog.timestamp >= cutoff
+            ).order_by(NodeLifecycleLog.timestamp).all()
+            
+            periods = []
+            online_seconds = 0
+            offline_seconds = 0
+            
+            # Determine initial status at the start of the window
+            # If we have logs, the status BEFORE the first log is the 'previous_status' of that log
+            # If no logs in window, we assume the status has been constant (match current status)
+            if logs:
+                initial_status = logs[0].previous_status or "offline"
+                # Normalize status strings
+                if initial_status.upper() in ["ACTIVE", "ONLINE"]:
+                    prev_status = "online"
+                else:
+                    prev_status = "offline"
+            else:
+                # No logs in window means stable state. Use current node status.
+                if node.status.value in ["ACTIVE"]:
+                    prev_status = "online"
+                else:
+                    prev_status = "offline"
+
+            prev_time = cutoff
+            
+            for log in logs:
+                duration = (log.timestamp - prev_time).total_seconds()
+                if prev_status == "online":
+                    online_seconds += duration
+                else:
+                    offline_seconds += duration
+                
+                periods.append({
+                    "status": prev_status,
+                    "start": prev_time.isoformat(),
+                    "end": log.timestamp.isoformat()
+                })
+                
+                # Update status for next segment
+                # Log event_type "CAME_ONLINE" -> online, "WENT_OFFLINE" -> offline
+                if "ONLINE" in log.event_type.upper():
+                    prev_status = "online"
+                else:
+                    prev_status = "offline"
+                prev_time = log.timestamp
+            
+            # Add final period from last log (or cutoff) up to now
+            now = datetime.utcnow()
+            duration = (now - prev_time).total_seconds()
+            if prev_status == "online":
+                online_seconds += duration
+            else:
+                offline_seconds += duration
+                
+            periods.append({
+                "status": prev_status,
+                "start": prev_time.isoformat(),
+                "end": now.isoformat()
+            })
+            
+            total_seconds = online_seconds + offline_seconds
+            uptime_percent = (online_seconds / total_seconds * 100) if total_seconds > 0 else 0
+            
+            return {
+                "node_id": node_id,
+                "node_name": node.name,
+                "current_status": node.status.value if node.status else "unknown",
+                "uptime_percent": round(uptime_percent, 2),
+                "online_seconds": int(online_seconds),
+                "offline_seconds": int(offline_seconds),
+                "periods": periods,
+                "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None,
+                "period_hours": hours
+            }
+        except Exception as e:
+            logger.error(f"Error getting node health timeline: {str(e)}")
+            return {"error": str(e)}
+
+    @staticmethod
+    def get_node_resource_trends(db: Session, node_id: int, hours: int = 24, interval: str = "hour") -> list:
+        """
+        Get CPU/Memory resource trends for a specific node.
+        """
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            
+            # Query pool analytics for pools belonging to this node
+            query = db.query(
+                func.date_trunc(interval, PoolAnalytics.timestamp).label('timestamp'),
+                func.avg(PoolAnalytics.avg_cpu_utilization).label('avg_cpu'),
+                func.avg(PoolAnalytics.avg_memory_utilization).label('avg_memory'),
+                func.max(PoolAnalytics.avg_cpu_utilization).label('max_cpu'),
+                func.max(PoolAnalytics.avg_memory_utilization).label('max_memory'),
+                func.sum(PoolAnalytics.current_instances).label('total_instances')
+            ).join(Pool, Pool.id == PoolAnalytics.pool_id).filter(
+                Pool.node_id == node_id,
+                PoolAnalytics.timestamp >= cutoff
+            ).group_by(
+                func.date_trunc(interval, PoolAnalytics.timestamp)
+            ).order_by(
+                func.date_trunc(interval, PoolAnalytics.timestamp)
+            ).all()
+            
+            return [
+                {
+                    "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+                    "avg_cpu": round(row.avg_cpu or 0, 2),
+                    "avg_memory": round(row.avg_memory or 0, 2),
+                    "max_cpu": round(row.max_cpu or 0, 2),
+                    "max_memory": round(row.max_memory or 0, 2),
+                    "total_instances": row.total_instances or 0
+                }
+                for row in query
+            ]
+        except Exception as e:
+            logger.error(f"Error getting node resource trends: {str(e)}")
+            return []
+

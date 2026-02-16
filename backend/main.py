@@ -28,6 +28,7 @@ from services import (
     NodeLifecycleService
 )
 from audit_service import AuditService, AuditAction, AuditCategory
+from analytics_calculator import DashboardAnalyticsCalculator
 from auth_middleware import get_node_from_api_key
 from role_service import RoleService, require_admin, require_devops, require_user
 from keycloak_service import keycloak_service
@@ -412,6 +413,29 @@ async def create_node(node: NodeCreate, db: Session = Depends(get_db), current_u
         logger.error(f"Create node error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create node: {str(e)}")
 
+# IMPORTANT: Static routes like /nodes/lifecycle-logs must come BEFORE parameterized routes like /nodes/{node_id}
+@app.get("/nodes/lifecycle-logs", response_model=List[NodeLifecycleLogResponse])
+async def get_all_lifecycle_logs(
+    node_id: Optional[int] = None,
+    event_type: Optional[str] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get node lifecycle audit logs (online/offline transitions)"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        return NodeLifecycleService.get_logs(db, node_id=node_id, event_type=event_type, limit=limit)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get lifecycle logs error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get lifecycle logs: {str(e)}")
+
 @app.get("/nodes/{node_id}", response_model=NodeResponse)
 async def get_node(node_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:
@@ -768,6 +792,93 @@ async def get_pool_analytics(node_id: Optional[int] = None, hours: int = 24, db:
         logger.error(f"Get pool analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get pool analytics: {str(e)}")
 
+@app.get("/analytics/instance-trends")
+async def get_instance_trends(
+    hours: int = 24, 
+    interval: str = "hour",
+    db: Session = Depends(get_db), 
+    current_user = Depends(get_current_user)
+):
+    """Get instance count trends over time for dashboard chart"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        return DashboardAnalyticsCalculator.get_instance_trends(db, hours, interval)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get instance trends error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get instance trends: {str(e)}")
+
+@app.get("/analytics/scaling-patterns")
+async def get_scaling_patterns(
+    hours: int = 24,
+    db: Session = Depends(get_db), 
+    current_user = Depends(get_current_user)
+):
+    """Get scaling event patterns for dashboard chart"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        return DashboardAnalyticsCalculator.get_scaling_patterns(db, hours)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get scaling patterns error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get scaling patterns: {str(e)}")
+
+@app.get("/analytics/node/{node_id}/health")
+async def get_node_health(
+    node_id: int,
+    hours: int = 24,
+    db: Session = Depends(get_db), 
+    current_user = Depends(get_current_user)
+):
+    """Get node health timeline for node details page"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        result = DashboardAnalyticsCalculator.get_node_health_timeline(db, node_id, hours)
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get node health error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get node health: {str(e)}")
+
+@app.get("/analytics/node/{node_id}/resources")
+async def get_node_resources(
+    node_id: int,
+    hours: int = 24,
+    interval: str = "hour",
+    db: Session = Depends(get_db), 
+    current_user = Depends(get_current_user)
+):
+    """Get node CPU/Memory resource trends for node details page"""
+    try:
+        if not RoleService.has_role(current_user, UserRole.DEVOPS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Devops role required."
+            )
+        return DashboardAnalyticsCalculator.get_node_resource_trends(db, node_id, hours, interval)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get node resources error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get node resources: {str(e)}")
+
 # Pool management endpoints
 @app.get("/pools", response_model=List[PoolResponse])
 async def get_pools(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
@@ -1075,30 +1186,6 @@ async def get_user_details(user_id: int, db: Session = Depends(get_db), current_
     except Exception as e:
         logger.error(f"Get user details error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get user details: {str(e)}")
-
-
-# Node Lifecycle Audit Log endpoints
-@app.get("/nodes/lifecycle-logs", response_model=List[NodeLifecycleLogResponse])
-async def get_lifecycle_logs(
-    node_id: Optional[int] = None,
-    event_type: Optional[str] = None,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
-    """Get node lifecycle audit logs (online/offline transitions)"""
-    try:
-        if not RoleService.has_role(current_user, UserRole.DEVOPS):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Devops role required."
-            )
-        return NodeLifecycleService.get_logs(db, node_id=node_id, event_type=event_type, limit=limit)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Get lifecycle logs error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get lifecycle logs: {str(e)}")
 
 
 @app.get("/nodes/{node_id}/lifecycle-logs", response_model=List[NodeLifecycleLogResponse])

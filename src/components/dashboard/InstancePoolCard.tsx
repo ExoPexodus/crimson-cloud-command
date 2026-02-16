@@ -185,9 +185,9 @@ export function InstancePoolCard({
               className="h-7 px-2 text-muted-foreground hover:text-white hover:bg-dark-blue-800/20 text-xs"
               asChild
             >
-              <a href={`/nodes?id=${nodeId}`}>
+              <a href={`/nodes/${nodeId}`}>
                 <ExternalLink size={12} className="mr-1" />
-                View
+                Analytics
               </a>
             </Button>
           )}

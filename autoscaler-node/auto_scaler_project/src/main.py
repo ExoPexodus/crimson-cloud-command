@@ -11,6 +11,7 @@ from user_config.config_manager import build_oci_config, load_config, get_backen
 from scaling_logic.auto_scaler import evaluate_metrics
 from oracle_sdk_wrapper.oci_scaling import initialize_oci_client
 from instance_manager.instance_pool import get_instances_from_instance_pool
+from alerts.instance_state_tracker import check_and_alert
 from oci.monitoring import MonitoringClient
 from oci.core import ComputeManagementClient
 from scheduler.scheduler import Scheduler
@@ -371,6 +372,13 @@ def process_pool(pool, autoscaler_node):
         logging.info(f"Starting monitoring loop for pool: {pool['instance_pool_id']}")
         while not autoscaler_node.stop_all_pools.is_set():
             try:
+                # Check for instance state changes and fire alerts
+                check_and_alert(
+                    pool['instance_pool_id'],
+                    compute_management_client,
+                    pool['compartment_id']
+                )
+                
                 # Get metrics before scaling evaluation
                 avg_cpu, avg_ram = collector.get_metrics()
                 
@@ -451,6 +459,12 @@ def main():
         logging.warning("⚠️  PROJECT_NAME not set - webhook alerts will use 'unknown' as project name")
     else:
         logging.info(f"✓ PROJECT_NAME configured: {project_name}")
+    
+    # Log instance state tracker toggle states
+    alert_scale_down = os.getenv("WEBHOOK_ALERT_SCALE_DOWN", "true").lower() == "true"
+    alert_scale_up = os.getenv("WEBHOOK_ALERT_SCALE_UP", "false").lower() == "true"
+    logging.info(f"✓ Instance state tracker - Scale-down alerts: {'ENABLED' if alert_scale_down else 'DISABLED'}")
+    logging.info(f"✓ Instance state tracker - Scale-up alerts: {'ENABLED' if alert_scale_up else 'DISABLED'}")
     
     # Load configuration first to get backend settings
     config_path = os.path.join(

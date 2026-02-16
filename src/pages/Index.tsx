@@ -10,6 +10,7 @@ import { AlertsStrip } from "@/components/dashboard/AlertsStrip";
 import { ScalingEventsFeed } from "@/components/dashboard/ScalingEventsFeed";
 import { EmptyDashboardState } from "@/components/dashboard/EmptyDashboardState";
 import { NodeSetupDialog } from "@/components/dashboard/NodeSetupDialog";
+import { AnalyticsChartsSection } from "@/components/dashboard/AnalyticsChartsSection";
 import { useState } from "react";
 
 const Index = () => {
@@ -44,6 +45,9 @@ const Index = () => {
                 <EmptyDashboardState onRegisterNode={() => setIsNodeSetupOpen(true)} />
               ) : (
                 <>
+                  {/* Analytics Charts */}
+                  <AnalyticsChartsSection />
+
                   {/* Recent Scaling Events */}
                   <div className="mb-6">
                     <ScalingEventsFeed />
@@ -59,9 +63,9 @@ const Index = () => {
       </div>
 
       {/* Node Setup Dialog */}
-      <NodeSetupDialog 
-        isOpen={isNodeSetupOpen} 
-        onClose={() => setIsNodeSetupOpen(false)} 
+      <NodeSetupDialog
+        isOpen={isNodeSetupOpen}
+        onClose={() => setIsNodeSetupOpen(false)}
       />
     </SidebarProvider>
   );

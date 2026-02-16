@@ -497,7 +497,7 @@ class NodeLifecycleService:
             new_status=new_status,
             reason=reason,
             triggered_by=triggered_by,
-            metadata=metadata_json
+            extra_data=metadata_json
         )
         db.add(log_entry)
         return log_entry
@@ -531,7 +531,7 @@ class NodeLifecycleService:
                 "new_status": log.new_status,
                 "reason": log.reason,
                 "triggered_by": log.triggered_by,
-                "metadata": log.metadata,
+                "metadata": log.extra_data,
                 "timestamp": log.timestamp
             }
             for log, node_name in results
