@@ -180,9 +180,9 @@ The Oracle Cloud Autoscaling Management System is a distributed infrastructure m
 
 | Document | Description |
 |----------|-------------|
-| [System Architecture](./02-SYSTEM-ARCHITECTURE.md) | Detailed component architecture and interactions |
-| [Database Schema](./03-DATABASE-SCHEMA.md) | Complete database structure and relationships |
-| [Workflow Engine](./04-WORKFLOW-ENGINE.md) | Autoscaling logic and decision flow |
-| [Integration Contract](./05-INTEGRATION-CONTRACT.md) | API specifications and contracts |
-| [UI Wireframes](./06-UI-WIREFRAMES.md) | User interface design and layouts |
-| [Workflow Diagrams](./07-WORKFLOW-DIAGRAMS.md) | Visual process flows |
+| [System Architecture](./docs/02-SYSTEM-ARCHITECTURE.md) | Detailed component architecture and interactions |
+| [Database Schema](./docs/03-DATABASE-SCHEMA.md) | Complete database structure and relationships |
+| [Workflow Engine](./docs/04-WORKFLOW-ENGINE.md) | Autoscaling logic and decision flow |
+| [Integration Contract](./docs/05-INTEGRATION-CONTRACT.md) | API specifications and contracts |
+| [UI Wireframes](./docs/06-UI-WIREFRAMES.md) | User interface design and layouts |
+| [Workflow Diagrams](./docs/07-WORKFLOW-DIAGRAMS.md) | Visual process flows |
